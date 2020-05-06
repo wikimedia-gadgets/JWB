@@ -1,0 +1,189 @@
+{{tool warning|access=1}}
+{|style="float:right;text-align:center;width:120px;background:#eee5ff;border:2px solid #899DEE;border-radius:2px;padding:5px;margin:5px;"
+|[[File:Text-x-source.svg|100px]]
+|-
+|[[User:Joeytje50/JWB.js|Source code]]
+|-
+|[[User:Joeytje50/JWB.js/i18n.js|i18n file]]
+|-
+|[[User:Joeytje50/JWB.css|Stylesheet]]
+|-
+|<span class=plainlinks>[{{fullurl:Wikipedia:AutoWikiBrowser/Script}} '''Run script''']</span>
+|-
+|[[Special:MyPage/JWB-settings.js|Settings page]]
+|}
+{{shortcut|WP:JWB}}
+
+'''JavaScript Wiki Browser''' is a script that allows users to make semi-automated edits more easily. For general use, it works similarly to the [[Wikipedia:AutoWikiBrowser|downloadable AutoWikiBrowser]], but it requires no executable installation, and can run on all major operating systems. This script heavily borrows from AWB in design and functionality, for example using its [[WP:AWB/T|Regex Typo Fixing]] and [[WP:AWB/C|User Checkpage]]. To use this script, you need to be listed on the wiki's AutoWikiBrowser CheckPage ([[Project:AutoWikiBrowser/CheckPage]] on your wiki), or have administrator rights on the wiki.
+
+==Installation==
+To install this script on any wiki, put the following code in your JavaScript file (for example [[Special:MyPage/common.js]], [[meta:Special:MyPage/global.js]], or a skin-specific JS file):
+
+<source lang="javascript">
+mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.js&action=raw&ctype=text/javascript');
+</source>
+
+or for users on en.wikipedia.org itself:
+
+<pre>
+{{subst:lusc|User:Joeytje50/JWB.js/load.js}}
+</pre> 
+(ignore the error when saving)
+
+Note that, to use this script, you '''must''' be listed on the checkpage located at ''Project:AutoWikiBrowser/CheckPage'' (ie. [[Project:AutoWikiBrowser/CheckPage|this page]] on this wiki), if that page exists. If no such page exists on the wiki you're using it on, all users are allowed to use the tool.
+
+==Getting started==
+After installing the script, simply go to <span class="plainlinks">[{{fullurl:Wikipedia:AutoWikiBrowser/Script}} '''this page''']</span> to run the script. For users using the script on another wiki, simply go to the page ''Project:AutoWikiBrowser/Script'' on the wiki you'd like to start the script on, and have installed the [[#Installation|above code]] on.
+
+The interface of JWB may seem a bit crowded at first, but you'll eventually get used to working with it. This densely packed interface allows for fewer different tabs to be used, which allows you to do more things without having to switch tabs.
+
+The most important part of the script of course is the page list. You can enter any number of pages in the page list in the bottom left corner of the interface. The page list, along with the edit area and the results window (the top part) are resizable, and for the text fields, will expand over the rest of the JWB interface to prevent it from moving the content aside.
+
+While editing, all inputs will be disabled, so to modify your settings, you first need to press the stop button.
+
+==Page list==
+[[File:JWB Setup options.png|thumb|Setup options]]
+In the first tab (''Setup''), you will find a set of options that allows you to perform certain actions on the list of pages. The ''Remove duplicates'' button will automatically filter out any duplicate page names, and the ''Sort'' button will sort the page list alphabetically.
+
+===Page variables===
+
+You can define page variables in the page list. This can be done by putting a <code>|</code> after the page name, and following it with the value of the page variable. This variable can then be accessed using <code>$x</code> in the ''Replace'' and ''With'' replacement boxes, in both of the ''Skip when ...'' boxes, and for sysops, the target page name box.
+
+This can be useful when moving large numbers of pages. Simply prepare a list of original page names with the new page name put after it with a <code>|</code> in between, and it will automatically fill in the new page name. It can also be used when you need to replace a specific word that's different for each of the pages in your list, or if you need to replace something with a specific word. If no page variable is specified, the page title is used as a page variable.
+
+===Pre-parsing===
+The pre-parse mode can be used to automatically filter your pagelist to those that meet certain requirements. Simply check the ''Use pre-parse mode'' box, and define your skip requirements in the [[#Skip options|''Skip'' tab]]. After having finished defining your skip requirements, press start to begin loading each page in the list, and either skipping it when it meets the skip requirements, or moving it to the bottom of the page list to be used later.
+
+JWB will automatically insert a <code>#PRE-PARSE-STOP</code> flag at the bottom of the list, so that it only goes through the list of pages once. If you want to change where the pre-parsing should stop, simply insert <code>#PRE-PARSE-STOP</code> on a separate line in the page list below the last page you want to pre-parse (as if it were a page name).
+
+You can press stop any time you like during the pre-parsing. The <code>#PRE-PARSE-STOP</code> will be left in place then, so that you can simply modify your skip rules, and continue on, or you can press the ''reset'' button next to the ''Use pre-parse mode'' checkbox to re-parse the whole page list again.
+
+===Generating page lists===
+To generate a page list, simply click the button ''Generate'' in the ''Setup'' tab. That will open up a window where you can specify which requirements the page list must meet. Note that generating a page list is limited to 50 consecutive requests at a time. This is to prevent overloading the server. The maximum number of pages per request depends on which generator is used. For pages in a category or links on a page, the limit is 500 (or 5000 for bots), and for the other generators it is 50 (or 500 for bots).
+
+Each of these generators filters its results based on the selected namespaces in the namespace box to the right of the generator options. You can select multiple namespaces by either holding the {{kbd|Ctrl}} or {{kbd|Shift}} keys and clicking, or dragging across the namespaces. If the generated list of pages exceeds the maximum number of pages, you can use this to filter down the results to get the full list, in several steps.
+
+Simply check the box before the field set's legend to enable the fields and include that list generator when generating the page list.
+
+;Category
+:Gets all category members of the entered category.<br/>
+To exclude either subcategories, files, or regular pages, simply uncheck the respective checkbox to disable it.
+;Links to page
+:Gets all links to the specified page.
+:*It can include regular wikilinks, template transclusions, or file usage. These can all be used simultaneously.
+:*It also has the option to filter for redirects. You can choose whether to include redirects only, to exclude redirects, or to include both redirects and wikilinks.
+:*Finally, it has the option to include links to the page's redirects. That means that if page A redirects to page B, and page C links to page A, it will still be included in the page list when this checkbox is checked.
+;Pages with prefix
+:Gets a list of all pages that start with the specified prefix. This can be useful when trying to generate a list of all subpages for a certain page for example.
+;Watchlist
+:This generator simply fetches all pages in your watchlist.
+;Links on page
+:Gets a list of all links that are included in the specified page. This can be useful when using a more complex page list generator such as [[mw:Extension:DynamicPageList|DPL]].
+
+Note that if multiple boxes are selected, the [[union (set theory)|union]] of matching pages will be generated. e.g. using "Category" and "Pages with prefix" will generate all pages which are in the given category ''or'' start with the given prefix.
+
+==Skip options==
+[[File:JWB Skip options.png|thumb|Skip options]]
+Using the ''Skip'' tab, you can set several rules for which pages should be skipped automatically.
+
+;Redirects
+:You can either select to follow redirects and edit the page the redirect leads to (this will also follow double redirects), or edit the redirects themselves. You can also select to skip redirect pages altogether.
+;No changes
+:If you select to skip when no changes are made, the page will automatically skip when the defined [[#Replacements|find&replace rules]] don't apply any changes to the page.
+;Page existence
+:You can either select to skip when the page exists, skip when it doesn't exist, or edit both existing and non-existing pages.
+;Contents
+:You can skip either when the page contains a certain string, or when it doesn't contain that. If the phrase entered in ''When page contains'' results in '''any''' matches on the page, or if the phrase entered in ''When page doesn't contain'' results in '''no''' matches, the page will be skipped.
+:You can either enter a certain keyphrase that should or should not occur on the page, or you can select to use a regular expression. For more information on regular expressions, see [[#Using regex]].
+
+==Editing options==
+[[File:JWB Editing options.png|thumb|Editing options]]
+[[File:JWB on Diff mode.png|thumb|JWB on Diff mode]]
+[[File:JWB on Preview mode.png|thumb|JWB on Preview mode]]
+In the ''Editing'' tab, you can specify the basic settings for editing. You can fill in the summary, and whether or not to mark the edit as 'minor'. The checkbox next to the summary input box toggles whether or not to append '' (via JWB)'' to your summary automatically. You can also select what to do to your watchlist. You can either select to add or remove every page you edit to or from your watchlist, not to modify your watchlist, or to watch pages based on your [[Special:Preferences#mw-prefsection-watchlist|preference settings]].
+
+While editing, you can also directly add or remove pages to or from your watchlist by pressing the button next to the watchlist dropdown. The button will be labelled with what action it will trigger (either adding or removing). 
+
+Every page will automatically display the difference between the stored content, and the content after the [[#Replacements|find&replace rules]] are applied. You can also press the ''Preview'' button to see the generated output. Some styles may not be loaded in this view though, since JWB uses a page structure different from the normal page contents. This may cause styles that depend on the position in the document not to function anymore.
+
+Users with the ''bot'' usergroup, that are also listed on the wiki's AutoWikiBrowser checklist under the 'bot' category, will also be able to automatically save their edits. This can be done with a throttle to prevent overloading the server. The number entered in the "every <code>[]</code> sec" field is the number of seconds ''between'' edits. This number can also contain decimals (using a <code>.</code> as [[decimal mark]]).
+
+==Replacements==
+
+Perhaps the most important feature of JWB is automated replacements. You can define the rules for replacing in the ''Editing'' tab. By default, all replacements are performed globally. That means that specifying that ''a'' should be replaced with ''b'', then every single letter ''a'' in the document will be replaced with ''b''. When using regular expressions, this can be disabled by removing the <code>g</code> flag.
+
+Newlines can be inserted in both Regex and regular mode, by putting <code>\n</code> in the place where you'd like to insert a newline character. You can also insert a backslash by putting <code>\\</code> in the text box.
+
+===Typo fixing===
+{{Main|User:Joeytje50/RETF}}
+
+You can use [[WP:AutoWikiBrowser/Typos|the AWB typo list]] to automatically fix any typos that exist on the page. Keep in mind that you must always check if the automatic fixes are correct. These automatic fixes will not be applied to image names, template names and parameters<ref name="params"/>, quotes<ref name="quotes"/>, and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target. These rules are taken from [[WP:AutoWikiBrowser/Typos#AutoWikiBrowser (AWB)|the rules listing for AWB]].
+
+'''Note: ''' Due to [https://caniuse.com/#search=lookbehind some browsers not supporting Regex lookbehinds], it is recommended to run this feature of JWB from one of the supporting browsers. At the time of writing, this includes Google Chrome and Opera. Notably, '''Firefox currently does not support lookbehinds''', and therefore is not able to perform as many typo fixes as other browsers.
+
+Do note that this uses the typo list on the wiki the script is executed from. If you are using this script on a wiki which has no ''Project:AutoWikiBrowser/Typos'' page, typo fixing will not work.
+
+<references>
+<ref name="params">Because of the non-regular nature of wikitext, this script will recognise any closing <code>}}</code> as the end of the outermost template. This means that if a template is nested inside another, and a typo occurs after that nested template, it will not be ignored.</ref>
+<ref name="quotes">Quotes that are not surrounded by a quotation template (ie. quotes surrounded by plain <code>""</code>) can only span a single line to be recognised. If an opening quote is on one line and the quote isn't ended until the next line, it will not be regarded as a quote, and will not be ignored. Please watch for quotes that do not get recognised manually.</ref>
+</references>
+
+===Using regex===
+
+Aside from simple text find&replace rules, you can also define regular expression replacements. Here you have more control over what gets matched, and what doesn't. You can specify the flags you'd like to use in the box next to the ''Regular Expression'' checkmark.
+
+In this JWB script, you can also specify the <code>_</code> (underscore) flag. That will make the expression treat all spaces and underscores equally. That can be useful when dealing with wikilinks, template transclusions, etc.
+
+To perform multiple replacements on the same page, you can use the ''More repace fields'' button, which will open up a window where you can add more rules in the same format as the format in the ''Editing'' tab. When you press {{kbd|Tab}} while having your cursor on the last replacement rule, another set of inputs will be added. Alternatively, you can press the ''Add more fields'' button.
+
+To test regular expressions (albeit without the <code>_</code> flag), you can use online IDEs such as http://regex101.com/, http://debuggex.com/, or http://regexr.com/.
+
+===Ignoring unparsed content===
+
+Checking this box will cause the replacement rule to be performed only on content outside the following:
+
+*Comments: <code><nowiki><!-- This will be ignored --></nowiki></code>
+*Code tags: contents of <code>&lt;nowiki&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;source&gt;</code>, <code>&lt;syntaxhighlight&gt;</code> and <code>&lt;pre&gt;</code> will be ignored
+*Formatting tags: <code>&lt;math&gt;</code>, <code>&lt;gallery&gt;</code>, <code>&lt;math&gt;</code> and <code>&lt;timeline&gt;</code>
+
+The content within those tags will be left untouched. This option will also work when not using regular expressions.
+
+Note that these exception rules are not the same as the rules for Regex Typo fixing; elements such as quotes and links will not be ignored with this mode.
+
+==Settings==
+
+JWB allows you to store your current settings either on the wiki, or on your own computer. You can also temporarily store them during this session by clicking ''Store setup''. That allows you to go back to the temporarily stored settings during this browser session, so that you can for example re-run JWB on a certain page list. To access them in a later session, you have to save them to the wiki, or download them.
+
+Saving to the wiki stores your settings on [[Special:MyPage/AWB-settings.js]]. Settings from this page are also automatically loaded to AWB when it loads, and the settings named <code>"default"</code> will automatically be applied when it loads. If you've modified your JWB settings on your /AWB-settings.js subpage, you can also refresh them in JWB by clicking the ''Update'' button.
+
+You can also download the settings as a JSON file. When saving this file, be sure to specify the file extension <code>.json</code>, otherwise you won't be able to select it via the ''Import'' button. You can import files by either clicking ''Import'' and selecting the JSON file, or by dragging a JSON file over the JWB window and releasing it (drag&drop). If the file extension is JSON, it will automatically load the settings from the file.
+
+You can also delete a setup from your list by selecting the setup via the dropdown menu, and pressing ''Delete''. If you accidentally clicked this button, you can easily revert the deletion by pressing ''Undo'' in the status bar.
+
+==Other actions==
+
+Administrators can also perform other actions on the page. These actions can not be automated, not even on accounts with both ''bot'' and ''sysop'' rights.
+
+===Moving===
+
+When moving pages, the move summary used is taken from the ''Editing'' tab. You can select to suppress redirect, which prevents the move from leaving a redirect in the place of the old page's title. You can also select to move all subpages and/or the talk page.
+
+===Deleting===
+
+Deleting, like moving uses the summary box for its delete reason.
+
+===Protecting===
+
+For protection, you can specify the protection levels for moving and creating separately. When the page doesn't exist, the level defined in the edit protection is instead applied to the create protection. The expiry field allows input in the same way as normal time input does. That means inputs like "1 hour", "5 January 2000", etc. are allowed here.
+
+==Logs==
+[[File:JWB Log.png|thumb|Log]]
+The ''Log'' tab stores a history of all actions made in chronological order. The bottom stats bar also keeps track of these actions. The logs also contain links to the edits made, so you can review your edit after making it.
+
+==Userbox==
+Feel free to add this userbox in your userpage:
+{{tlu|User:Joeytje50/JWB/Userbox}}
+
+{{User:Joeytje50/JWB/Userbox|category=no}}
+[[Category:AutoWikiBrowser]]
+
