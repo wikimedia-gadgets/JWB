@@ -2,7 +2,7 @@ This repository contains the files required to run the JavaScript Wiki Browser d
 
 Because of a different structure of files on Wikipedia, here's an overview of which Wikipedia page a certain file corresponds to:
 
-| (Git file)           | ENWP/$1                                                                      |
+| (Git file)           | ENWP/User:Joeytje50/$1                                                                      |
 |----------------------|------------------------------------------------------------------------------|
 | JWB.js               | [JWB.js](http://en.wikipedia.org/wiki/User:Joeytje50/JWB.js)                 |
 | JWB.css              | [JWB.css](http://en.wikipedia.org/wiki/User:Joeytje50/JWB.css)               |
