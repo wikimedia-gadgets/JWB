@@ -14,3 +14,5 @@ Because of a different structure of files on Wikipedia, here's an overview of wh
 | README.md            | *N/A*                                                                        |
 
 Author attribution can be found in the **JWB.js** file, and for the i18n contributions, authors are listed in the **i18n.js** file. For a comprehensive file history of each of the files starting at version 2.0, see [the history of the JWB.js page](https://en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js&action=history) on the English Wikipedia. For version 1.0, see [the original version history on the RuneScape Wiki](https://runescape.wiki/w/User:Joeytje50/AWB.js?action=history).
+
+If you want to modify this script and test it, you need to modify some of the hardcoded URLs in the scripts. Please do revert the urls back to the hardcoded wikipedia URLs when making a pull request into the master branch, in order to have a working version on this branch at all time.
