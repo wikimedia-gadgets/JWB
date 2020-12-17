@@ -16,6 +16,8 @@
 
 '''JavaScript Wiki Browser''' is a script that allows users to make semi-automated edits more easily. For general use, it works similarly to the [[Wikipedia:AutoWikiBrowser|downloadable AutoWikiBrowser]], but it requires no executable installation, and can run on all major operating systems. This script heavily borrows from AWB in design and functionality, for example using its [[WP:AWB/T|Regex Typo Fixing]] and [[WP:AWB/C|User Checkpage]]. To use this script, you need to be listed on the wiki's AutoWikiBrowser CheckPage ([[Project:AutoWikiBrowser/CheckPage]] on your wiki), or have administrator rights on the wiki.
 
+<div id="JWB-feed" style="display:none;">This div is invisible unless [[/feed.js]] is installed. That script will replace this text with a table containing the most recent edits to each page relevant to JWB.</div>
+
 ==Installation==
 To install this script on any wiki, put the following code in your JavaScript file (for example [[Special:MyPage/common.js]], [[meta:Special:MyPage/global.js]], or a skin-specific JS file):
 
@@ -119,7 +121,7 @@ Newlines can be inserted in both Regex and regular mode, by putting <code>\n</co
 
 You can use [[WP:AutoWikiBrowser/Typos|the AWB typo list]] to automatically fix any typos that exist on the page. Keep in mind that you must always check if the automatic fixes are correct. These automatic fixes will not be applied to image names, template names and parameters<ref name="params"/>, quotes<ref name="quotes"/>, and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target. These rules are taken from [[WP:AutoWikiBrowser/Typos#AutoWikiBrowser (AWB)|the rules listing for AWB]].
 
-'''Note: ''' Due to [https://caniuse.com/#search=lookbehind some browsers not supporting Regex lookbehinds], it is recommended to run this feature of JWB from one of the supporting browsers. At the time of writing, this includes Google Chrome and Opera. Notably, '''Firefox currently does not support lookbehinds''', and therefore is not able to perform as many typo fixes as other browsers.
+'''Note: ''' Due to [https://caniuse.com/#search=lookbehind some browsers not supporting Regex lookbehinds], it is recommended to run this feature of JWB from one of the supporting browsers. At the time of writing, this includes Google Chrome, Firefox, and Opera. Note that even for browsers that support it, older versions may not have, and users should check if they are using an up-to-date version or else not be able to perform as many typo fixes as other browsers.
 
 Do note that this uses the typo list on the wiki the script is executed from. If you are using this script on a wiki which has no ''Project:AutoWikiBrowser/Typos'' page, typo fixing will not work.
 
@@ -184,6 +186,6 @@ The ''Log'' tab stores a history of all actions made in chronological order. The
 Feel free to add this userbox in your userpage:
 {{tlu|User:Joeytje50/JWB/Userbox}}
 
-{{User:Joeytje50/JWB/Userbox|category=no}}
-[[Category:AutoWikiBrowser]]
+{{User:Joeytje50/JWB/Userbox|nocat=y}}
 
+[[Category:AutoWikiBrowser|JWB]]

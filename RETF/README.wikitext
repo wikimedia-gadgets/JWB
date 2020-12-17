@@ -10,7 +10,7 @@ After the script has loaded, you can run the RegEx Typo Fixes on a string using 
 RETF.replace("exmaple peice of mispelled text"); //returns "example piece of misspelled text"
 </source>
 
-Any piece of text can be entered into that funcion, and it will automatically fix all typos found in it. The typo rules will not be applied to image names, template names and parameters, quotes, and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target on that page. Also note that, since [https://caniuse.com/#search=lookbehind not all browsers support lookbehinds in Regular Expressions], any replacement rules containing lookbehinds (<code>?<=</code> and <code>?<!</code>) will be ignored for those who don't. At the time of writing, this means Firefox is unable to perform some of the typo fixes. It is therefore recommended to run this script using either Google Chrome or Opera.
+Any piece of text can be entered into that function, and it will automatically fix all typos found in it. The typo rules will not be applied to image names, template names and parameters, quotes, and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target on that page. Also note that, since [https://caniuse.com/#search=lookbehind not all browsers support lookbehinds in Regular Expressions], any replacement rules containing lookbehinds (<code>?<=</code> and <code>?<!</code>) will be ignored for those who don't. At the time of writing, this means Firefox is unable to perform some of the typo fixes. It is therefore recommended to run this script using either Google Chrome or Opera.
 
 To reload the typos list, simply run the following code:
 

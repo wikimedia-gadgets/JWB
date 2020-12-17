@@ -1,11 +1,11 @@
-/**<nowiki>
+/** <nowiki>
  * Install this script by pasting the following in your personal JavaScript file:
 
 mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.js&action=raw&ctype=text/javascript');
 
  * Or for users on en.wikipedia.org:
 
-importScript( 'User:Joeytje50/JWB.js/load.js' ); // Backlink: [[User:Joeytje50/JWB.js/load.js]]
+{{subst:lusc|User:Joeytje50/JWB.js/load.js}}
 
  * Note that this script will only run on the 'Project:AutoWikiBrowser/Script' page.
  * This script is based on the downloadable AutoWikiBrowser.
@@ -27,7 +27,10 @@ importScript( 'User:Joeytje50/JWB.js/load.js' ); // Backlink: [[User:Joeytje50/J
  * http://www.gnu.org/copyleft/gpl.html
  * @version 3.2.0
  * @author Joeytje50
+ * </nowiki>
  */
+
+window.JWBdeadman = false; // ADMINS: in case of fire, set this variable to true to disable this entire tool for all users
 
 //TODO: more advanced pagelist-generating options
 //TODO: generate page list based on images on a page
@@ -58,6 +61,12 @@ window.JWB = {}; //The main global object for the script.
 	$.getScript('//en.wikipedia.org/w/index.php?title=User:Joeytje50/RETF.js&action=raw&ctype=text/javascript', function() {
 			$('#refreshRETF').click(RETF.load);
 	});
+
+	if (window.JWBdeadman === true) {
+		window.JWB = false; // disable all access
+		alert("This tool has been temporarily been disabled by Wikipedia admins due to issues it would otherwise cause. Please check back soon to see if it is working again.")
+		return false;
+	}
 
 	(new mw.Api()).get({
 		action: 'query',
@@ -195,7 +204,7 @@ JWB.api.call = function(data, callback, onerror) {
 JWB.api.diff = function(callback) {
 	JWB.status('diff');
 	var editBoxInput = $('#editBoxArea').val();
-	var redirects = $('input.redirects:checked').val()==='follow'?'1':'0';
+	var redirect = $('input.redirects:checked').val();
 	var data = {
 		'action': 'query',
 		'prop': 'info|revisions',
@@ -203,8 +212,8 @@ JWB.api.diff = function(callback) {
 		'titles': JWB.page.name,
 		'rvlimit': '1',
 		'rvdifftotext': editBoxInput,
-		'redirects': redirects
 	};
+	if (redirect=='follow') data.redirects = true;
 	JWB.api.call(data, function(response) {
 		var pageExists = response.query.pageids[0] !== '-1';
 		var diff;
@@ -1550,4 +1559,3 @@ JWB.init = function() {
 
 //Disable JWB altogether when it's loaded on a page other than Project:AutoWikiBrowser/Script. This script shouldn't be loaded on any other page in the first place.
 if (JWB.allowed === false) JWB = false;
-
