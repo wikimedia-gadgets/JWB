@@ -717,7 +717,7 @@ JWB.setup.download = function() {
 	JWB.status('setup-dload');
 	var url = 'data:application/json;base64,' + btoa(JWB.setup.getObj());
 	var elem = $('#download-anchor')[0];
-	if (elem.hasOwnProperty('download')) { //use download attribute when possible, for its ability to specify a filename
+	if (HTMLAnchorElement.prototype.hasOwnProperty('download')) { //use download attribute when possible, for its ability to specify a filename
 		elem.href = url;
 		elem.click();
 		setTimeout(function() {elem.removeAttribute('href');}, 2000);
