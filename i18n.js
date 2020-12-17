@@ -1787,3 +1787,10 @@ JWB.messages.zh_hant = {
 	'label-pl': '指定頁面:',
 	'tip-pl': '取得特定頁面上的連結列表。\n支援用豎線「|」字元分隔多個值。',
 };
+JWB.messages.zh = JWB.messages.zh_hans;
+JWB.messages.zh_cn = JWB.messages.zh_hans;
+JWB.messages.zh_my = JWB.messages.zh_hans;
+JWB.messages.zh_sg = JWB.messages.zh_hans;
+JWB.messages.zh_hk = JWB.messages.zh_hant;
+JWB.messages.zh_mo = JWB.messages.zh_hant;
+JWB.messages.zh_tw = JWB.messages.zh_hant;
