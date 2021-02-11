@@ -140,6 +140,7 @@ JWB.messages.en = {
 	'infinite-skip-notice':	"No replacement rules were specified, with JWB set to automatically skip when no changes are made.\n"+
 							"Please review these settings in the 'Content' and 'Skip' tabs.",
 	'autosave-error':		"There was a problem while submitting the previous page. Please check the '$1' tab and verify if the previous edits went through correctly.",
+	'csp-error':			'Unable to perform previous action: violated Content Security Policy "$1".',
 	
 	//Statuses
 	'status-alt':			'loading...',
@@ -1593,6 +1594,7 @@ JWB.messages.zh_hans = {
 	'label-pl': '指定页面:',
 	'tip-pl': '获取特定页面上的链接列表。\n支持用竖线“|”字符分隔多个值。',
 };
+
 /* Chinese (Traditional)
 	* @author YFdyh000 + Machine conversion
 	*/
