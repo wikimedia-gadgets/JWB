@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 3.2.0
+ * @version 3.2.2
  * @author Joeytje50
  * </nowiki>
  */
@@ -36,6 +36,9 @@ window.JWBdeadman = false; // ADMINS: in case of fire, set this variable to true
 //TODO: generate page list based on images on a page
 //TODO: Split up i18n to separate files per language (in the same way MediaWiki does it)
 //TODO: Add feature to perform general cleanup (<table> to {|, fullurl-links to wikilinks, removing underscores from wikilinks)
+//TODO: Store JWB settings in localStorage before committing to the wiki or downloading
+//BUG: Storing to the wiki does not always work because edit token is not refreshed
+//TODO: Keep an eye on https://stackoverflow.com/q/66153487/1256925
 
 window.JWB = {}; //The main global object for the script.
 
@@ -846,6 +849,7 @@ JWB.status = function(action, done) {
 	} else {
 		$('#summary, .editbutton').prop('disabled', !done); //Disable box when not done (so busy loading). re-enable when done loading.
 	}
+
 	var status = JWB.msg('status-'+action);
 	if (status === false) return;
 	if (status) {
@@ -1018,8 +1022,10 @@ JWB.start = function() {
 		alert(JWB.msg('infinite-skip-notice'));
 	} else {
 		JWB.isStopped = false;
-		if ($('#preparse').prop('checked') && !$('#articleList').val().match('#PRE-PARSE-STOP')) {
-			$('#articleList').val($.trim($('#articleList').val()) + '\n#PRE-PARSE-STOP'); //mark where to stop pre-parsing
+		if ($('#preparse').prop('checked')) {
+			if (!$('#articleList').val().match('#PRE-PARSE-STOP')) {
+				$('#articleList').val($.trim($('#articleList').val()) + '\n#PRE-PARSE-STOP'); //mark where to stop pre-parsing
+			}
 		} else {
 			$('#preparse-reset').click();
 		}
@@ -1456,6 +1462,11 @@ JWB.init = function() {
 	ondragover = function(e) {
 		e.preventDefault();
 	};
+	document.onsecuritypolicyviolation = function(e) {
+		if (JWB && JWB.msg) {
+			alert(JWB.msg('csp-error', e.violatedDirective))
+		}
+	}
 	
 	$('.JWBtab').click(function() {
 		$('.active').removeClass('active');

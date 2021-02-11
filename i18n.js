@@ -140,6 +140,7 @@ JWB.messages.en = {
 	'infinite-skip-notice':	"No replacement rules were specified, with JWB set to automatically skip when no changes are made.\n"+
 							"Please review these settings in the 'Content' and 'Skip' tabs.",
 	'autosave-error':		"There was a problem while submitting the previous page. Please check the '$1' tab and verify if the previous edits went through correctly.",
+	'csp-error':			'Unable to perform previous action: violated Content Security Policy "$1".',
 	
 	//Statuses
 	'status-alt':			'loading...',
@@ -1395,4 +1396,3 @@ JWB.messages.fa = {
 	'label-pl':				'صفحه:',
 	'tip-pl':				'فهرستی از صفحه‌هایی که در این صفحه پیوند شده‌اند تهیه می‌کند.\nموارد را با | جدا کنید.',
 };
-
