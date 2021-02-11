@@ -159,7 +159,7 @@ for (var i=0;i<objs.length;i++) {
 }
 JWB.summarySuffix = ' (via JWB)';
 if (document.location.hostname == 'en.wikipedia.org') JWB.summarySuffix = ' (via [[WP:JWB]])'
-JWB.lang = mw.config.get('wgUserLanguage');
+JWB.lang = mw.config.get('wgUserLanguage').replace('-', '_');
 JWB.index_php = mw.config.get('wgScript');
 JWB.isStopped = true;
 JWB.tooltip = window.tooltipAccessKeyPrefix || '';
