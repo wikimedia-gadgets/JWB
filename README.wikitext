@@ -16,6 +16,8 @@
 
 '''JavaScript Wiki Browser''' is a script that allows users to make semi-automated edits more easily. For general use, it works similarly to the [[Wikipedia:AutoWikiBrowser|downloadable AutoWikiBrowser]], but it requires no executable installation, and can run on all major operating systems. This script heavily borrows from AWB in design and functionality, for example using its [[WP:AWB/T|Regex Typo Fixing]] and [[WP:AWB/C|User Checkpage]]. To use this script, you need to be listed on the wiki's AutoWikiBrowser CheckPage ([[Project:AutoWikiBrowser/CheckPage]] on your wiki), or have administrator rights on the wiki.
 
+If you want to contribute to this project, you can create a pull request at [https://github.com/Joeytje50/JWB Github: Joeytje50/JWB]. This repo does require manual updates from me, so some minor changes made to the live version hosted here might not be live on Github immediately. If that is the case, I will try to merge any useful pull requests into the code of the live version. You can also use Github to contribute [[User:Joeytje50/JWB.js/i18n.js|i18n strings]].
+
 <div id="JWB-feed" style="display:none;">This div is invisible unless [[/feed.js]] is installed. That script will replace this text with a table containing the most recent edits to each page relevant to JWB.</div>
 
 ==Installation==
@@ -119,7 +121,7 @@ Newlines can be inserted in both Regex and regular mode, by putting <code>\n</co
 ===Typo fixing===
 {{Main|User:Joeytje50/RETF}}
 
-You can use [[WP:AutoWikiBrowser/Typos|the AWB typo list]] to automatically fix any typos that exist on the page. Keep in mind that you must always check if the automatic fixes are correct. These automatic fixes will not be applied to image names, template names and parameters<ref name="params"/>, quotes<ref name="quotes"/>, and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target. These rules are taken from [[WP:AutoWikiBrowser/Typos#AutoWikiBrowser (AWB)|the rules listing for AWB]].
+You can use [[WP:AutoWikiBrowser/Typos|the AWB typo list]] to automatically fix any typos that exist on the page. Keep in mind that you must always check if the automatic fixes are correct. These automatic fixes will not be applied to image names, template names and parameters<ref name="params"/>, quotes<ref name="quotes"/>, and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target. Any lines of text that contain a {{t|sic}} indicator will also be ignored by this typo fixer<ref name="sic"/>. These rules are taken from [[WP:AutoWikiBrowser/Typos#AutoWikiBrowser (AWB)|the rules listing for AWB]].
 
 '''Note: ''' Due to [https://caniuse.com/#search=lookbehind some browsers not supporting Regex lookbehinds], it is recommended to run this feature of JWB from one of the supporting browsers. At the time of writing, this includes Google Chrome, Firefox, and Opera. Note that even for browsers that support it, older versions may not have, and users should check if they are using an up-to-date version or else not be able to perform as many typo fixes as other browsers.
 
@@ -128,6 +130,7 @@ Do note that this uses the typo list on the wiki the script is executed from. If
 <references>
 <ref name="params">Because of the non-regular nature of wikitext, this script will recognise any closing <code>}}</code> as the end of the outermost template. This means that if a template is nested inside another, and a typo occurs after that nested template, it will not be ignored.</ref>
 <ref name="quotes">Quotes that are not surrounded by a quotation template (ie. quotes surrounded by plain <code>""</code>) can only span a single line to be recognised. If an opening quote is on one line and the quote isn't ended until the next line, it will not be regarded as a quote, and will not be ignored. Please watch for quotes that do not get recognised manually.</ref>
+<ref name="sic">A line where a transcribed typo has already been manually marked will likely have been spell-checked manually before. Chances are that any typo occurring ''anywhere'' on the same line of text will also be an intentional or transcribed typo, and therefore should ''not'' be fixed.</ref>
 </references>
 
 ===Using regex===
@@ -156,7 +159,7 @@ Note that these exception rules are not the same as the rules for Regex Typo fix
 
 JWB allows you to store your current settings either on the wiki, or on your own computer. You can also temporarily store them during this session by clicking ''Store setup''. That allows you to go back to the temporarily stored settings during this browser session, so that you can for example re-run JWB on a certain page list. To access them in a later session, you have to save them to the wiki, or download them.
 
-Saving to the wiki stores your settings on [[Special:MyPage/AWB-settings.js]]. Settings from this page are also automatically loaded to AWB when it loads, and the settings named <code>"default"</code> will automatically be applied when it loads. If you've modified your JWB settings on your /AWB-settings.js subpage, you can also refresh them in JWB by clicking the ''Update'' button.
+Saving to the wiki stores your settings on [[Special:MyPage/JWB-settings.js]]. Settings from this page are also automatically loaded to JWB when it loads, and the settings named <code>"default"</code> will automatically be applied when it loads. If you've modified your JWB settings on your /JWB-settings.js subpage, you can also refresh them in JWB by clicking the ''Update'' button.
 
 You can also download the settings as a JSON file. When saving this file, be sure to specify the file extension <code>.json</code>, otherwise you won't be able to select it via the ''Import'' button. You can import files by either clicking ''Import'' and selecting the JSON file, or by dragging a JSON file over the JWB window and releasing it (drag&drop). If the file extension is JSON, it will automatically load the settings from the file.
 

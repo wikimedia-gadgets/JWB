@@ -169,6 +169,8 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	border: 1px solid #555;
 	background: white;
 	padding: 0 3px;
+	position: relative;
+	z-index: 1000;
 }
 
 /* Interface */
@@ -442,4 +444,3 @@ fieldset[disabled] {
 #ns-filter select {
 	height: 100%;
 }
-
