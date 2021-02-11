@@ -718,7 +718,7 @@ JWB.setup.download = function() {
 	if ($.trim(name) === '') name = 'default';
 	JWB.setup.save(name);
 	JWB.status('setup-dload');
-	var url = 'data:application/json;base64,' + btoa(JWB.setup.getObj());
+	var url = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(JWB.setup.getObj())));
 	var elem = $('#download-anchor')[0];
 	if (HTMLAnchorElement.prototype.hasOwnProperty('download')) { //use download attribute when possible, for its ability to specify a filename
 		elem.href = url;
@@ -756,7 +756,8 @@ JWB.setup.import = function(e) {
 		try {
 			//Exclusion regex based on http://stackoverflow.com/a/23589204/1256925
 			//Removes all JS comments from the file, except when they're between quotes.
-			var data = JSON.parse(reader.result.replace(/("[^"]*")|(\/\*[\w\W]*\*\/|\/\/[^\n]*)/g, function(match, g1, g2) {
+			var c = reader.result;
+			var data = JSON.parse(c.replace(/("[^"]*")|(\/\*[\w\W]*\*\/|\/\/[^\n]*)/g, function(match, g1, g2) {
 				if (g1) return g1;
 			}));
 		} catch(e) {
