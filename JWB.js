@@ -1354,7 +1354,6 @@ JWB.init = function() {
 			'<label><input type="radio" id="exists-neither" name="exists" value="neither">'+JWB.msg('skip-exists-neither')+'</label>'+
 			'<br>'+
 			(JWB.sysop?'<label><input type="checkbox" id="skipAfterAction" checked> '+JWB.msg('skip-after-action')+'</label>':'')+
-		'</fieldset>'+
 		'<label>'+JWB.msg('skip-contains')+' <input class="fullwidth" type="text" id="skipContains"></label>'+
 		'<label>'+JWB.msg('skip-not-contains')+' <input class="fullwidth" type="text" id="skipNotContains"></label>'+
 		'<div class="regexswitch">'+
@@ -1363,7 +1362,8 @@ JWB.init = function() {
 			'<label class="divisor" title="'+JWB.msg('tip-regex-flags')+'" style="display:none;">'+
 				JWB.msg('label-regex-flags')+' <input type="text" id="containFlags"/>'+
 			'</label>'+
-		'</div>'
+		'</div>'+
+		'</fieldset>'
 	);
 	if (JWB.sysop) $('.JWBtabc[data-tab="4"]').html(
 		'<fieldset>'+
