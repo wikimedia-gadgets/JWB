@@ -327,7 +327,6 @@ JWB.api.get = function(pagename) {
 		action: 'query',
 		prop: 'info|revisions|categories',
 		inprop: 'watched',
-		meta: 'tokens',
 		type: 'csrf|watch',
 		titles: pagename,
 		rvprop: 'content|timestamp|ids',
@@ -335,7 +334,7 @@ JWB.api.get = function(pagename) {
 		cllimit: 'max',
 		clcategories: skipcg,
 		indexpageids: true,
-		meta: 'userinfo',
+		meta: 'userinfo|tokens',
 		uiprop: 'hasmsg'
 	};
 	if (redirect=='follow'||redirect=='skip') data.redirects = true;
