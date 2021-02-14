@@ -10,7 +10,7 @@
 |-
 |<span class=plainlinks>[{{fullurl:Wikipedia:AutoWikiBrowser/Script}} '''Run script''']</span>
 |-
-|[[Special:MyPage/JWB-settings.js|Settings page]]
+|[[Special:MyPage/JWB-settings.json|Your settings page]]
 |}
 {{shortcut|WP:JWB}}
 
@@ -18,7 +18,7 @@
 
 If you want to contribute to this project, you can create a pull request at [https://github.com/Joeytje50/JWB Github: Joeytje50/JWB]. This repo does require manual updates from me, so some minor changes made to the live version hosted here might not be live on Github immediately. If that is the case, I will try to merge any useful pull requests into the code of the live version. You can also use Github to contribute [[User:Joeytje50/JWB.js/i18n.js|i18n strings]].
 
-<div id="JWB-feed" style="display:none;">This div is invisible unless [[/feed.js]] is installed. That script will replace this text with a table containing the most recent edits to each page relevant to JWB.</div>
+<table class="mw-collapsible mw-collapsed" style="display: none;"><tr><th>Show feed</th></tr><tr><td id="JWB-feed">This div is invisible unless [[/feed.js]] is installed. That script will replace this text with a table containing the most recent edits to each page relevant to JWB, as well as a list of missing i18n messages.</td></tr></table>
 
 ==Installation==
 To install this script on any wiki, put the following code in your JavaScript file (for example [[Special:MyPage/common.js]], [[meta:Special:MyPage/global.js]], or a skin-specific JS file):
@@ -79,6 +79,7 @@ To exclude either subcategories, files, or regular pages, simply uncheck the res
 :*Finally, it has the option to include links to the page's redirects. That means that if page A redirects to page B, and page C links to page A, it will still be included in the page list when this checkbox is checked.
 ;Pages with prefix
 :Gets a list of all pages that start with the specified prefix. This can be useful when trying to generate a list of all subpages for a certain page for example.
+:If 'strict' prefix searching is enabled, all pages that start with exactly the given string are returned. If not, a [[mw:API:Prefixsearch|fuzzy search]] may be executed ('<code>engine_autoselect</code>').
 ;Watchlist
 :This generator simply fetches all pages in your watchlist.
 ;Links on page
@@ -99,6 +100,9 @@ Using the ''Skip'' tab, you can set several rules for which pages should be skip
 ;Contents
 :You can skip either when the page contains a certain string, or when it doesn't contain that. If the phrase entered in ''When page contains'' results in '''any''' matches on the page, or if the phrase entered in ''When page doesn't contain'' results in '''no''' matches, the page will be skipped.
 :You can either enter a certain keyphrase that should or should not occur on the page, or you can select to use a regular expression. For more information on regular expressions, see [[#Using regex]].
+:Regex matches will only be allocated a limited amount of time if the browser and wiki settings support this feature<ref name="Worker">Technical details: Requires browser support for [https://caniuse.com/webworkers Web Workers] and website [[Content Security Policy]] allowing <code>script-src: blob:;</code> or <code>worker-src: blob:;</code></ref>. The time limit for ''each individual'' match rule can be set in the 'Setup' tab.
+;Categories
+:Pages that contain categories listed here (comma-separated or <code>|</code>-separated) will be skipped automatically.
 
 ==Editing options==
 [[File:JWB Editing options.png|thumb|Editing options]]
@@ -117,6 +121,10 @@ Users with the ''bot'' usergroup, that are also listed on the wiki's AutoWikiBro
 Perhaps the most important feature of JWB is automated replacements. You can define the rules for replacing in the ''Editing'' tab. By default, all replacements are performed globally. That means that specifying that ''a'' should be replaced with ''b'', then every single letter ''a'' in the document will be replaced with ''b''. When using regular expressions, this can be disabled by removing the <code>g</code> flag.
 
 Newlines can be inserted in both Regex and regular mode, by putting <code>\n</code> in the place where you'd like to insert a newline character. You can also insert a backslash by putting <code>\\</code> in the text box.
+
+Regex replacements will only be allocated a limited amount of time if the browser and wiki settings support this feature <ref name="Worker"/>. The time limit for ''each individual'' regex replacement rule can be set in the 'Setup' tab. This feature prevents freezing up the entire tool when a regex takes too long to execute.
+
+<references/>
 
 ===Typo fixing===
 {{Main|User:Joeytje50/RETF}}
@@ -159,11 +167,13 @@ Note that these exception rules are not the same as the rules for Regex Typo fix
 
 JWB allows you to store your current settings either on the wiki, or on your own computer. You can also temporarily store them during this session by clicking ''Store setup''. That allows you to go back to the temporarily stored settings during this browser session, so that you can for example re-run JWB on a certain page list. To access them in a later session, you have to save them to the wiki, or download them.
 
-Saving to the wiki stores your settings on [[Special:MyPage/JWB-settings.js]]. Settings from this page are also automatically loaded to JWB when it loads, and the settings named <code>"default"</code> will automatically be applied when it loads. If you've modified your JWB settings on your /JWB-settings.js subpage, you can also refresh them in JWB by clicking the ''Update'' button.
+Saving to the wiki stores your settings on [[Special:MyPage/JWB-settings.json]]. Settings from this page are also automatically loaded to JWB when it loads, and the settings named <code>"default"</code> will automatically be applied when it loads. If you've modified your JWB settings on your /JWB-settings.json subpage, you can also refresh them in JWB by clicking the ''Update'' button.
 
 You can also download the settings as a JSON file. When saving this file, be sure to specify the file extension <code>.json</code>, otherwise you won't be able to select it via the ''Import'' button. You can import files by either clicking ''Import'' and selecting the JSON file, or by dragging a JSON file over the JWB window and releasing it (drag&drop). If the file extension is JSON, it will automatically load the settings from the file.
 
 You can also delete a setup from your list by selecting the setup via the dropdown menu, and pressing ''Delete''. If you accidentally clicked this button, you can easily revert the deletion by pressing ''Undo'' in the status bar.
+
+As of February 14th, 2021, the settings page has moved from "JWB-settings.js" to "JWB-settings.json". If you had a settings page in this old location, this page will automatically be moved to the new location.
 
 ==Other actions==
 
@@ -190,5 +200,16 @@ Feel free to add this userbox in your userpage:
 {{tlu|User:Joeytje50/JWB/Userbox}}
 
 {{User:Joeytje50/JWB/Userbox|nocat=y}}
+{{clear}}
+==Contributing to JWB==
+If you would like to contribute code to JWB, please see [http://github.com/Joeytje50/JWB/ the Github repository]. You can create a pull request there to submit code or bug fixes to the script.
+
+If you would like to contribute internationalisation (i18n) messages to the script, please either submit a pull request on said Github repository, or post a message on [[User talk:Joeytje50/JWB.js/i18n.js]] with your of messages to be added. See also the message at the top of that talk page for more information.
+
+If you would like to contribute missing messages in a language that already has some or most messages translated, please leave them on the existing message talk page (<code>User talk:Joeytje50/JWB.js/i18n-<LANGUAGE>.js</code>), and leave a link to my userpage to notify me. To obtain a full list of missing messages for existing language files, please install the following script in [[Special:MyPage/common.js]] (and ignore the error):
+
+<pre>{{subst:lusc|User:Joeytje50/JWB/feed.js}}</pre>
+
+This will show a full list of missing messages in a collapsed box at the top of this page, just above the table of contents. Just click the button to "Show feed" to see the full list.
 
 [[Category:AutoWikiBrowser|JWB]]

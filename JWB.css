@@ -78,12 +78,12 @@ body {
 	float: left;
 	margin-right: 5px;
 	position: relative;
-	z-index: 5;
+	z-index: 25;
 }
 
 #editBoxArea {
 	position: absolute;
-	z-index: 10;
+	z-index: 30;
 	top: 20px;
 	right: 0;
 }
@@ -98,7 +98,7 @@ textarea {
 	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 }
-fieldset {
+body.AutoWikiBrowser fieldset {
 	padding: 0 5px 5px;
 	line-height: inherit;
 	border: 1px solid #2F6FAB;
@@ -170,7 +170,7 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	background: white;
 	padding: 0 3px;
 	position: relative;
-	z-index: 1000;
+	z-index: 20;
 }
 
 /* Interface */
@@ -195,7 +195,9 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	width: 95%;
 	display: block;
 }
-.JWBtabc input[type="text"], .JWBpopup input[type="text"] {
+.JWBtabc input[type="text"],
+.JWBtabc input[type="number"],
+.JWBpopup input[type="text"] {
 	border: 1px solid #BBB;
 	border-radius: 5px;
 	box-shadow: 1px 1px 3px;
@@ -288,6 +290,26 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	border-left: 1px solid #AAA;
 }
 
+.timelimit-label {
+	display: block;
+	position: relative;
+}
+.timelimit-label::after {
+	content: "ms";
+	position: absolute;
+	bottom: 0;
+	right: 10px;
+    font-style: italic;
+}
+#timelimit {
+	width: 100px;
+    padding-right: 25px;
+    box-sizing: border-box;
+	margin-right: 5px;
+	float: right;
+	text-align: right;
+}
+
 #actionlog {
 	border-collapse: collapse;
 	margin-bottom: 25px;
@@ -328,6 +350,17 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 
 #pagelistPopup fieldset > label {
 	display:block;
+}
+
+.listSMW {
+	display: none;
+}
+.hasSMW .listSMW {
+	display: block;
+}
+#smwquery {
+	height: 3em;
+	padding: 2px;
 }
 
 #watchPage {
@@ -402,7 +435,7 @@ tr[data-line]:not(.lineheader) {cursor: pointer;}
 /* Popup window */
 
 #overlay {
-	z-index: 30;
+	z-index: 40;
 	cursor: pointer;
 	position: fixed;
 	top: 0;
