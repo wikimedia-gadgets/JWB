@@ -1,3 +1,4 @@
+// <nowiki>
 //This script functions as a small tool that makes it easy to perform typo fixes on any text using JavaScript.
 /**<nowiki>
  * Usage: See [[User:Joeytje50/RETF]].
@@ -26,14 +27,37 @@ RETF.load();
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 1.2.0
+ * @version 2.0.0
  * @author Joeytje50
  */
 
 window.RETF = {}; //making a main object to store everything else
 RETF.list = [];
 
+RETF.buildList = function(response) {
+	if (response.query && response.query.pageids[0] === '-1') return; //abort if typos page doesn't exist.
+    var page = response.query.pages[response.query.pageids[0]];
+    var cont = page.revisions[0]['*'];
+	//make sure the string starts with a < by putting <typos></typos> around.
+	var $typolists = $('<typos>'+cont+'</typos>').find('Typo:not([disabled])').each(function() {
+		if ($(this).attr('src') !== undefined) {
+			// Allow 'importing' of external typo fixing rules. Format for the URL needs to be exactly like:
+			// https://en.wikipedia.org/w/api.php?action=query&format=json&prop=revisions&rvprop=content&rvlimit=1&indexpageids=true&origin=*&titles=Project%3AAutoWikiBrowser%2FTypos
+			// (changes to the base API url and changes to the page name being allowed); origin=* is important to allow CORS requests.
+			$.get($(this).attr('src'), RETF.buildList);
+		} else {
+			try {
+				new RegExp($(this).attr('find')); // will throw a SyntaxError in browsers not supporting lookbehinds
+				RETF.list.push([$(this).attr('find'), $(this).attr('replace'), $(this).attr('word')]); //store all typofixes in one big array
+			} catch(e) {
+				// skip rule if it contains lookbehinds.
+			}
+		}
+	});
+};
+
 RETF.load = function() {
+	RETF.list = []; //reset list, in case this is a list refresh.
 	(new mw.Api()).get({
 		action: 'query',
 		prop: 'revisions',
@@ -42,22 +66,7 @@ RETF.load = function() {
         rvlimit: '1',
         indexpageids: true,
 		format: 'json',
-	}).done(function(response) {
-		RETF.list = []; //reset list, in case this is a list refresh.
-		if (response.query && response.query.pageids[0] === '-1') return; //abort if typos page doesn't exist.
-        var page = response.query.pages[response.query.pageids[0]];
-        var cont = page.revisions[0]['*'];
-        var typoList = [];
-		//make sure the string starts with a < by putting <typos></typos> around.
-		var $typolists = $('<typos>'+cont+'</typos>').find('Typo:not([disabled])').each(function() {
-			try {
-				new RegExp($(this).attr('find')); // will throw a SyntaxError in browsers not supporting lookbehinds
-				RETF.list.push([$(this).attr('find'), $(this).attr('replace'), $(this).attr('word')]); //store all typofixes in one big array
-			} catch(e) {
-				// skip rule if it contains lookbehinds.
-			}
-		});
-	});
+	}).done(RETF.buildList);
 };
 
 RETF.replace = function(text) {
@@ -76,7 +85,7 @@ RETF.replace = function(text) {
 		}
 		//Regex based on http://stackoverflow.com/a/23589204/1256925.
 		//Rules to skip based on https://en.wikipedia.org/wiki/Wikipedia:AutoWikiBrowser/Typos#AutoWikiBrowser_.28AWB.29
-		//Rules are: File:links | templates | "quotes" | text after : or *
+		//Rules are: File:links | templates | "quotes" | text after : or * 
 		var exclude = new RegExp('\\[\\[File:[^\\|\\]]+\\|?|{{.+?}}|"[^"]+"|[:\\*].*|('+RETF.list[i][0]+')', 'ig');
 		text = text.replace(exclude, replaceText);
 	}
@@ -85,3 +94,4 @@ RETF.replace = function(text) {
 };
 
 RETF.load();
+// </nowiki>

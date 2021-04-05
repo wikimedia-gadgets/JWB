@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.0.0
+ * @version 4.2.2
  * @author Joeytje50
  * </nowiki>
  */
@@ -35,6 +35,12 @@ window.JWBdeadman = false; // ADMINS: in case of fire, set this variable to true
 //TODO: more advanced pagelist-generating options
 //TODO: generate page list based on images on a page
 //TODO: Add feature to perform general cleanup (<table> to {|, fullurl-links to wikilinks, removing underscores from wikilinks)
+//TODO: Add report button to AJAX error alert box
+
+//Cleanup / modernize:
+// .indexOf('') != -1 -> .includes()
+// mw for requests, instead of ajax
+// Optional?.chaining?.properties
 
 /***** Global object/variables *****/
 window.JWB = {}; //The main global object for the script.
@@ -226,7 +232,7 @@ window.JWB = {}; //The main global object for the script.
 //Main template for API calls
 JWB.api.call = function(data, callback, onerror) {
 	data.format = 'json';
-	if (data.action !== 'query' && data.action !== 'ask') {
+	if (data.action !== 'query' && data.action !== 'compare' && data.action !== 'ask') {
 		data.bot = true; // mark edits as bot
 	}
 	$.ajax({
@@ -236,16 +242,18 @@ JWB.api.call = function(data, callback, onerror) {
 		type: 'POST',
 		success: function(response) {
 			if (response.error) {
+				if (onerror && onerror(response, 'API') === false) return;
 				alert('API error: ' + response.error.info);
 				JWB.stop();
 			} else {
 				callback(response);
 			}
 		},
+		// onerror: if it exists and returns false, do not show error alert. Otherwise, do show alert.
 		error: function(xhr, error) {
+			if (onerror && onerror(error, 'AJAX') === false) return;
 			alert('AJAX error: ' + error);
 			JWB.stop();
-			if (onerror) onerror();
 		}
 	});
 };
@@ -257,38 +265,36 @@ JWB.api.diff = function(callback) {
 	var editBoxInput = $('#editBoxArea').val();
 	var redirect = $('input.redirects:checked').val();
 	var data = {
-		action: 'query',
-		prop: 'info|revisions',
+		action: 'compare',
 		indexpageids: true,
-		titles: JWB.page.name,
-		rvlimit: '1',
-		rvdifftotext: editBoxInput,
+		fromtitle: JWB.page.name,
+		//toslots: 'main', // TODO: Once this gets supported more widely, convert to the non-deprecated toslots system.
+		//'totext-main': editBoxInput,
+		totext: editBoxInput,
+		topst: true,
 	};
 	if (redirect=='follow') data.redirects = true;
 	JWB.api.call(data, function(response) {
-		var pageExists = response.query.pageids[0] !== '-1';
 		var diff;
-		if (pageExists) {
-			var diffpage = response.query.pages[response.query.pageids[0]];
-			diff = diffpage.revisions[0].diff['*'];
-			if (diff === '') {
-				diff = '<h2>'+JWB.msg('no-changes-made')+'</h2>';
-			} else {
-				diff = '<table class="diff">'+
-					'<colgroup>'+
-						'<col class="diff-marker">'+
-						'<col class="diff-content">'+
-						'<col class="diff-marker">'+
-						'<col class="diff-content">'+
-					'</colgroup>'+
-					'<tbody>'+diff+'</tbody></table>';
-			}
+		diff = response.compare['*'];
+		if (diff === '') {
+			diff = '<h2>'+JWB.msg('no-changes-made')+'</h2>';
 		} else {
-			diff = '<span style="font-weight:bold;color:red;">'+JWB.msg('page-not-exists')+'</span>';
+			diff = '<table class="diff">'+
+				'<colgroup>'+
+					'<col class="diff-marker">'+
+					'<col class="diff-content">'+
+					'<col class="diff-marker">'+
+					'<col class="diff-content">'+
+				'</colgroup>'+
+				'<tbody>'+diff+'</tbody></table>';
 		}
 		$('#resultWindow').html(diff);
 		$('.diff-lineno').each(function() {
-			$(this).parent().attr('data-line',parseInt($(this).html().match(/\d+/)[0])-1).addClass('lineheader');
+			var lineNumMatch = $(this).html().match(/\d+/);
+			if (lineNumMatch) {
+				$(this).parent().attr('data-line',parseInt(lineNumMatch[0])-1).addClass('lineheader');
+			}
 		});
 		$('table.diff tr').each(function() { //add data-line attribute to every line, relative to the previous one. Used for click event.
 			if (!$(this).next().is('[data-line]') && !$(this).next().has('td.diff-deletedline + td.diff-empty')) {
@@ -300,6 +306,16 @@ JWB.api.diff = function(callback) {
 		JWB.status('done', true);
 		if (typeof(callback) === 'function') {
 			callback();
+		}
+	}, function(err, type) {
+		if (type == 'API' && err.error.code == 'missingtitle') {
+			// missingtitle is to be expected when editing a page that doesn't exist; just show a message and move on.
+			$('#resultWindow').html('<span style="font-weight:bold;color:red;">'+JWB.msg('page-not-exists')+'</span>');
+			JWB.status('done', true);
+			if (typeof(callback) === 'function') {
+				callback();
+			}
+			return false; // stop propagation of error; do not show alerts.
 		}
 	});
 };
@@ -326,7 +342,7 @@ JWB.api.get = function(pagename) {
 	var data = {
 		action: 'query',
 		prop: 'info|revisions|categories',
-		inprop: 'watched',
+		inprop: 'watched|protection',
 		type: 'csrf|watch',
 		titles: pagename,
 		rvprop: 'content|timestamp|ids',
@@ -366,6 +382,7 @@ JWB.api.get = function(pagename) {
 		JWB.page.exists = !response.query.pages["-1"];
 		JWB.page.deletedrevs = response.query.deletedrevs;
 		JWB.page.watched = JWB.page.hasOwnProperty('watched');
+		JWB.page.protections = JWB.page.restrictiontypes;
 
 		if (response.query.redirects) {
 			JWB.page.name = response.query.redirects[0].to;
@@ -391,38 +408,45 @@ JWB.api.get = function(pagename) {
 		if (containRegex) {
 			JWB.status('check-skips');
 			var skipping = false; // for tracking if match is found in synchronous calls.
-			JWB.worker.match(JWB.page.content, $('#skipContains').val(), containFlags, function(result, err) {
-				if (result !== null && err === undefined) {
-					JWB.log('skip', JWB.page.name);
-					JWB.next(); // next() also cancels the skipNotContains.
-					skipping = true;
-					return;
-				} // else continue with the queued worker job that checks skipNotContains
-			});
+			if ($('#skipContains').val().length) {
+				JWB.worker.match(JWB.page.content, $('#skipContains').val(), containFlags, function(result, err) {
+					console.log('Contains', result, err);
+					if (result !== null && err === undefined) {
+						JWB.log('skip', JWB.page.name);
+						JWB.next(); // next() also cancels the skipNotContains.
+						skipping = true;
+						return;
+					} // else continue with the queued worker job that checks skipNotContains
+				});
+			}
 			if (skipping) {
 				console.log('skipped page before replaces')
 				return;
 			}
-			JWB.worker.match(JWB.page.content, $('#skipNotContains').val(), containFlags, function(result, err) {
-				if (result === null && err === undefined) {
-					JWB.log('skip', JWB.page.name);
-					JWB.next(); // also cancels the replace
-					skipping = true;
-					return;
-				} // else move on to replacing
-			});
+			if ($('#skipNotContains').val().length) {
+				JWB.worker.match(JWB.page.content, $('#skipNotContains').val(), containFlags, function(result, err) {
+					console.log('Not contains', result, err);
+					if (result === null && err === undefined) {
+						JWB.log('skip', JWB.page.name);
+						JWB.next(); // also cancels the replace
+						skipping = true;
+						return;
+					} // else move on to replacing
+				});
+			}
 			if (skipping) {
 				console.log('skipped page before replaces')
 				return;
 			}
 		} else {
-			JWB.status('done', true);
 			skipContains = $('#skipContains').val();
 			skipNotContains = $('#skipNotContains').val();
-		}
-		if ((skipContains && JWB.page.content.indexOf(skipContains) !== -1) ||
-			(skipNotContains && JWB.page.content.indexOf(skipNotContains) === -1)) {
-			
+			if ((skipContains && JWB.page.content.includes(skipContains)) ||
+				(skipNotContains && JWB.page.content.includes(skipNotContains))) {
+				console.log('skipped page before replaces')
+				return JWB.next();
+			}
+			JWB.status('done', true);
 		}
 		JWB.replace(JWB.page.content, function(newContent) {
 			if (JWB.stopped === true) return;
@@ -450,21 +474,40 @@ JWB.api.submit = function(page) {
 		$('#currentpage').html(JWB.msg('editbox-currentpage', ' ', ' '));
 		return;
 	}
+	var newval = $('#editBoxArea').val();
+	var diffsize = newval.length - JWB.page.content.length;
+	if ($('#sizelimit').val() != 0 && Math.abs(diffsize) > parseInt($('#sizelimit').val())){
+		alert(JWB.msg('size-limit-exceeded', diffsize > 0 ? '+'+diffsize : diffsize));
+		JWB.status('done', true);
+		return;
+	}
 	var data = {
 		title: JWB.page.name,
 		summary: summary,
 		action: 'edit',
 		basetimestamp: JWB.page.revisions ? JWB.page.revisions[0].timestamp : '',
 		token: JWB.page.token,
-		text: $('#editBoxArea').val(),
+		text: newval,
 		watchlist: $('#watchPage').val()
 	};
 	if ($('#minorEdit').prop('checked')) data.minor = true;
 	JWB.api.call(data, function(response) {
 		JWB.log('edit', response.edit.title, response.edit.newrevid);
-		JWB.status('done', true);
-		JWB.next();
+	}, function(error, errtype) {
+		var cont = false;
+		if (errtype == 'API') {
+			cont = confirm("API error: " + error.error.info + "\n" + JWB.msg('confirm-continue'));
+		} else {
+			cont = confirm("AJAX error: " + error + "\n" + JWB.msg('confirm-continue'));
+		}
+		if (!cont) {
+			JWB.stop();
+		}
+		return false; // do not fall back on default error handling
 	});
+	// While the edit is submitting, continue to the next page to edit.
+	JWB.status('done', true);
+	JWB.next();
 };
 JWB.api.preview = function() {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
@@ -472,6 +515,7 @@ JWB.api.preview = function() {
 	JWB.api.call({
 		title: JWB.page.name,
 		action: 'parse',
+		pst: true,
 		text: $('#editBoxArea').val()
 	}, function(response) {
 		$('#resultWindow').html(response.parse.text['*']);
@@ -497,7 +541,7 @@ JWB.api.move = function() {
 	if ($('#moveSubpage').prop('checked')) data.movesubpages = true;
 	if ($('#suppressRedir').prop('checked')) data.noredirect = true;
 	JWB.api.call(data, function(response) {
-		JWB.log('move', response.move.from, reponse.move.to);
+		JWB.log('move', response.move.from, response.move.to);
 		JWB.status('done', true);
 		if (!$('#moveTo').val().match(/\$x/i)) $('#moveTo').val('')[0].focus(); //clear entered move-to pagename if it's not based on the pagevar
 		JWB.next(topage);
@@ -525,24 +569,32 @@ JWB.api.protect = function() {
 	var summary = $('#summary').val();
 	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
 	var editprot = $('#editProt').val();
-	var moveprot = $('#moveProt').val();
+	var moveprot = $('#moveProt').val() || editprot;
+	var uploadprot = $('#uploadProt').val() || editprot;
+	var protstring = 'edit='+editprot+'|move='+moveprot;
+	if (!JWB.page.exists)
+		protstring = 'create='+editprot;
+	if (JWB.page.protections.includes('upload'))
+		protstring += '|upload='+uploadprot;
 	JWB.api.call({
 		action: 'protect',
 		title: JWB.page.name,
 		token: JWB.page.token,
 		reason: summary,
 		expiry: $('#protectExpiry').val()!==''?$('#protectExpiry').val():'infinite',
-		protections: (JWB.page.exists?'edit='+editprot+'|move='+moveprot:'create='+editprot)
+		protections: protstring,
 	}, function(response) {
 		var protactions = '';
 		var prots = response.protect.protections;
 		for (var i=0;i<prots.length;i++) {
 			if (typeof prots[i].edit == 'string') {
-				protactions += ' edit: '+(prots[i].edit?prots[i].edit:'all');
+				protactions += ' edit: '+(prots[i].edit || 'all');
 			} else if (typeof prots[i].move == 'string') {
-				protactions += ' move: '+(prots[i].move?prots[i].move:'all');
+				protactions += ' move: '+(prots[i].move || 'all');
 			} else if (typeof prots[i].create == 'string') {
-				protactions += ' create: '+(prots[i].create?prots[i].create:'all');
+				protactions += ' create: '+(prots[i].create || 'all');
+			} else if (typeof prots[i].upload == 'string') {
+				protactions += ' upload: '+(prots[i].upload || 'all');
 			}
 		}
 		protactions += ' expires: '+prots[0].expiry;
@@ -585,11 +637,7 @@ JWB.pl.stop = function() {
 
 JWB.pl.getNSpaces = function() {
 	var list = $('#pagelistPopup [name="namespace"]')[0];
-	if (list.selectedOptions.length == list.options.length) {
-		return ''; //return empty string if every namespace is selected; this will make the request default to having no filter
-	} else {
-		return $('#pagelistPopup [name="namespace"]').val().join('|'); //.val() returns an array of selected options.
-	}
+	return $('#pagelistPopup [name="namespace"]').val().join('|'); //.val() returns an array of selected options.
 };
 
 JWB.pl.getList = function(abbrs, lists, data) {
@@ -607,11 +655,13 @@ JWB.pl.getList = function(abbrs, lists, data) {
 	data.action = 'query';
 	var nspaces = JWB.pl.getNSpaces();
 	for (var i=0;i<abbrs.length;i++) {
-		if (nspaces) data[abbrs[i]+'namespace'] = nspaces;
+		if (nspaces) data[abbrs[i]+'namespace'] = data[abbrs[i]+'namespace'] || nspaces; // if namespaces are already set, use that instead (for apnamespace)
 		data[abbrs[i]+'limit'] = 'max';
 	}
-	if (lists.indexOf('links') !== -1) {
+	let linksList = lists.indexOf('links')
+	if (linksList !== -1) {
 		data.prop = 'links';
+		lists.splice(linksList, 1)
 	}
 	data.list = lists.join('|');
 	console.log('generating:', data);
@@ -776,7 +826,8 @@ JWB.pl.generate = function() {
 					if (!this.value.startsWith(cgns+':')) {
 						this.value = cgns+':'+this.value;
 					}
-				} else if (this.id == 'pssearch' && this.name == 'apprefix') {
+				}
+				if (this.id == 'pssearch' && this.name == 'apprefix') {
 					// apprefix needs namespace separate from pagename
 					name = this.name;
 					let split = this.value.split(':')
@@ -886,7 +937,7 @@ JWB.setup.getObj = function() {
 			settings.push('"' + i + '": ' + JSON.stringify(JWB.settings[i]));
 		}
 	}
-	return '{\n\t' + settings.join(',\n\t') + '\n}';
+	return '{\n\t' + settings.join(',\n\t').split('{{subst:').join('{{#JWB-SAFESUBST:#') + '\n}';
 };
 
 JWB.setup.submit = function() {
@@ -909,6 +960,7 @@ JWB.setup.submit = function() {
 			minor: true
 		}, function(response) {
 			JWB.status('done', true);
+			JWB.log('edit', response.edit.title, response.edit.newrevid);
 		});
 	});
 };
@@ -1021,11 +1073,14 @@ JWB.setup.load = function() {
 				} else {
 					// old page exists but new page doesn't; move the page to the new location.
 					JWB.setup.moveNew(oldtitle, newtitle, edittoken);
+					JWB.settingspage = 'JWB-settings.json';
 					return;
 				}
 			} else {
 				// Old page either doesn't exist or is a redirect. Don't bother with it.
 				page = newpage;
+				exists = (page.missing === undefined);
+				JWB.settingspage = 'JWB-settings.json';
 			}
 		} else {
 			page = pages[ids[0]];
@@ -1036,7 +1091,7 @@ JWB.setup.load = function() {
 			if (JWB.allowed && firstrun) JWB.setup.save('default'); //this runs when this callback returns after the init has loaded.
 			return;
 		}
-		var data = page.revisions[0]['*'];
+		var data = page.revisions[0]['*'].split('{{#JWB-SAFESUBST:#').join('{{subst:');
 		if (!data) {
 			// settings page is empty; don't load anything.
 			if (JWB.allowed && firstrun) JWB.setup.save('default'); //this runs when this callback returns after the init has loaded.
@@ -1098,11 +1153,11 @@ JWB.setup.del = function() {
 	if (name === 'default') {
 		JWB.setup.apply('_blank');
 		JWB.setup.save('default');
-		JWB.status(JWB.msg('status-del-default', '<a href="javascript:JWB.setup.undelete();">'+JWB.msg('status-del-undo')+'</a>'), true);
+		JWB.status(['del-default', '<a href="javascript:JWB.setup.undelete();">'+JWB.msg('status-del-undo')+'</a>'], true);
 	} else {
 		$('#loadSettings').find('[value="'+name+'"]').remove();
 		JWB.setup.apply();
-		JWB.status(JWB.msg('status-del-setup', name, '<a href="javascript:JWB.setup.undelete();">'+JWB.msg('status-del-undo')+'</a>'), true);
+		JWB.status(['del-setup', name, '<a href="javascript:JWB.setup.undelete();">'+JWB.msg('status-del-undo')+'</a>'], true);
 	}
 };
 JWB.setup.undelete = function() {
@@ -1112,15 +1167,20 @@ JWB.setup.undelete = function() {
 
 /***** Main other functions *****/
 
-//Show status message
+//Show status message status-`action`, or status-`action[0]` with arguments `action[1:]`
 JWB.status = function(action, done) {
 	if (JWB.bot && $('#autosave').prop('checked') && !JWB.isStopped) {
-		$('#summary, .editbutton').prop('disabled', true); //Disable summary when auto-saving
+		$('#summary, .editbutton, #movePage, #deletePage, #protectPage, #skipPage').prop('disabled', true); //Disable summary when auto-saving
 	} else {
-		$('#summary, .editbutton').prop('disabled', !done); //Disable box when not done (so busy loading). re-enable when done loading.
+		$('#summary, .editbutton, #movePage, #deletePage, #protectPage, #skipPage').prop('disabled', !done); //Disable box when not done (so busy loading). re-enable when done loading.
 	}
-
-	var status = JWB.msg('status-'+action);
+	var status;
+	if (action instanceof Array) {
+		action[0] = 'status-'+action[0];
+		status = JWB.msg.apply(this, action)
+	} else {
+		status = JWB.msg('status-'+action);
+	}
 	if (status === false) return;
 	if (status) {
 		if (!done) { //spinner if not done
@@ -1146,6 +1206,10 @@ JWB.pageCount = function() {
 //Perform all specified find&replace actions
 JWB.replace = function(input, callback) {
 	JWB.status('replacing');
+	if (!JWB.worker.isWorking() && JWB.worker.supported) {
+		// if the worker is not already working, then re-init to make sure we've not got any broken leftovers from the previous page
+		JWB.worker.init();
+	}
 	JWB.newContent = input;
 	JWB.pageCount();
  	var varOffset = JWB.list[0].indexOf('|') !== -1 ? JWB.list[0].indexOf('|') + 1 : 0;
@@ -1168,12 +1232,19 @@ JWB.replace = function(input, callback) {
 		if (rWith.length === 0 && replace === '$') return;
 		try {
 			let replaceDone = function(result, err) {
+				console.log('done replacing', result, err);
 				if (err === undefined) {
 					JWB.newContent = result;
-					if (JWB.worker.queue.length == 0) {
+					if (JWB.worker.queue.length == 0 && JWB.worker.supported) {
 						// all workers are done
 						JWB.status('done', true);
 						callback(JWB.newContent);
+					}
+				} else if (err == 'Timeout exceeded') {
+					if (JWB.worker.queue.length == 0 && JWB.worker.supported) {
+						// all workers have exceeded their time and/or have finished
+						JWB.status('done', true);
+						callback(JWB.newContent); // newContent remains unmodified due to timeout.
 					}
 				}
 			}
@@ -1351,6 +1422,8 @@ JWB.worker.queue = [];
 JWB.worker.load = function(callback) {
 	if (JWB.worker.blob) return callback(); // already successfully built
 	$.getScript(JWB.imports['worker.js'], function() {
+		// Firefox does not understand try..catch for content security policy violations, so define the worker functions regardless of the blob support.
+		JWB.worker.functions = JWB.worker.function();
 		// the loaded script just defined JWB.worker.function; convert it to a blob url
 		// Based on https://stackoverflow.com/a/33432215/1256925
 		if (JWB.worker.supported) try {
@@ -1360,11 +1433,7 @@ JWB.worker.load = function(callback) {
 		} catch(e) {
 			if (e.code == 18) {
 				JWB.worker.supported = false;
-				// workers are not supported due to CSP. Load in the synchronous functions as a fallback.
-				JWB.worker.functions = JWB.worker.function();
 			}
-		} else { // worker not supported but still asked to init.
-			JWB.worker.functions = JWB.worker.function();
 		}
 	});
 }
@@ -1378,6 +1447,8 @@ JWB.worker.init = function() {
 		JWB.worker.timeout = 0;
 		JWB.worker.queue = [];
 		JWB.worker.worker.onmessage = function(e) {
+			clearTimeout(JWB.worker.timeout);
+			JWB.worker.timeout = 0;
 			if (JWB.isStopped) {
 				// we're stopped; clear the queue and stop.
 				JWB.worker.queue = [];
@@ -1386,8 +1457,6 @@ JWB.worker.init = function() {
 			} else {
 				console.error("Worker finished without callback set:", e.data, e);
 			}
-			clearTimeout(JWB.worker.timeout);
-			JWB.worker.timeout = 0;
 			JWB.worker.next(true);
 		}
 	});
@@ -1400,6 +1469,7 @@ JWB.worker.isWorking = function() {
 
 // Cancel current worker's task (e.g. due to timeout)
 JWB.worker.terminate = function() {
+	console.log('terminating');
 	let w = JWB.worker;
 	w.worker.terminate();
 	w.callback(undefined, 'Timeout exceeded');
@@ -1454,7 +1524,7 @@ JWB.worker.next = function(force = false) {
 /***** Functions using workers *****/
 JWB.worker.match = function(str, pattern, flags, callback) {
 	if (JWB.worker.supported) {
-		JWB.worker.do({cmd: 'match', str: str, pattern: pattern, flags: flags}, callback);
+		JWB.worker.do({cmd: 'match', str, pattern, flags}, callback);
 	} else {
 		if (str && str.indexOf('~'+'~~JWB.') === 0) str = JWB[str.substr(7)]; // For now, 1-deep expansion is sufficient.
 		JWB.worker.functions.match(str, pattern, flags, callback);
@@ -1463,7 +1533,7 @@ JWB.worker.match = function(str, pattern, flags, callback) {
 
 JWB.worker.replace = function(str, pattern, flags, rWith, callback) {
 	if (JWB.worker.supported) {
-		JWB.worker.do({cmd: 'replace', str: str, pattern: pattern, flags: flags, rWith: rWith}, callback);
+		JWB.worker.do({cmd: 'replace', str, pattern, flags, rWith}, callback);
 	} else {
 		if (str && str.indexOf('~'+'~~JWB.') === 0) str = JWB[str.substr(7)]; // For now, 1-deep expansion is sufficient.
 		JWB.worker.functions.replace(str, pattern, flags, rWith, callback);
@@ -1472,7 +1542,7 @@ JWB.worker.replace = function(str, pattern, flags, rWith, callback) {
 
 JWB.worker.unparsedReplace = function(str, pattern, flags, rWith, callback) {
 	if (JWB.worker.supported) {
-		JWB.worker.do({cmd: 'unparsedreplace', str: str, pattern: pattern, flags: flags, rWith: rWith}, callback);
+		JWB.worker.do({cmd: 'unparsedreplace', str, pattern, flags, rWith}, callback);
 	} else {
 		if (str && str.indexOf('~'+'~~JWB.') === 0) str = JWB[str.substr(7)]; // For now, 1-deep expansion is sufficient.
 		JWB.worker.functions.unparsedreplace(str, pattern, flags, rWith, callback);
@@ -1711,11 +1781,15 @@ JWB.init = function() {
 				'<iframe id="download-iframe"></iframe>'+
 			'</div>'+
 		'</fieldset>'+
-		'<fieldset id="performance">'+
-			'<legend>'+JWB.msg('label-performance')+'</legend>'+
+		'<fieldset id="limits">'+
+			'<legend>'+JWB.msg('label-limits')+'</legend>'+
 			'<label class="timelimit-label" title="'+JWB.msg('tip-time-limit')+'">'+
 				JWB.msg('time-limit')+
-				'<input type="number" id="timelimit" value="3000">'+
+				'<input type="number" id="timelimit" value="3000" min="0">'+
+			'</label>'+
+			'<label title="'+JWB.msg('tip-diff-size-limit')+'">'+
+				JWB.msg('diff-size-limit')+
+				'<input type="number" id="sizelimit" value="0" min="0">'+
 			'</label>'+
 		'</fieldset>'
 	);
@@ -1812,15 +1886,24 @@ JWB.init = function() {
 		'<fieldset>'+
 		'<legend>'+JWB.msg('protect-header')+'</legend>'+
 			JWB.msg('protect-edit')+
-			'<select id="editProt">'+
+			' <select id="editProt">'+
 				'<option value="all" selected>'+JWB.msg('protect-none')+'</option>'+
 				'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
 				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
 			'</select> '+
 			'<br>'+
 			JWB.msg('protect-move')+
-			'<select id="moveProt">'+
-				'<option value="all" selected>'+JWB.msg('protect-none')+'</option>'+
+			' <select id="moveProt">'+
+				'<option value="" selected>('+JWB.msg('protect-like-edit')+')</option>'+
+				'<option value="all">'+JWB.msg('protect-none')+'</option>'+
+				'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
+				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
+			'</select> '+
+			'<br>'+
+			JWB.msg('protect-upload')+
+			' <select id="uploadProt">'+
+				'<option value="" selected>('+JWB.msg('protect-like-edit')+')</option>'+
+				'<option value="all">'+JWB.msg('protect-none')+'</option>'+
 				'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
 				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
 			'</select> '+
@@ -1872,7 +1955,13 @@ JWB.init = function() {
 		'</fieldset>'+
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" id="proplinks" name="links" value="pl"> '+JWB.msg('legend-pl')+'</label></legend>'+
-			'<label title="'+JWB.msg('tip-pl')+'">'+JWB.msg('label-pl')+' <input type="text" id="pltitles" name="titles"></label>'+
+			'<label title="'+JWB.msg('tip-pl')+'">'+JWB.msg('label-pl')+' <input type="text" id="titles" name="titles"></label>'+
+		'</fieldset>'+
+		'<fieldset>'+
+			'<legend><label><input type="checkbox" id="proplinks" name="search" value="sr"> '+JWB.msg('legend-sr')+'</label></legend>'+
+			'<label title="'+JWB.msg('tip-sr')+'\n'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
+				JWB.msg('label-sr')+' <input type="text" id="srsearch" name="srsearch" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
+			'</label>'+
 		'</fieldset>'+
 		'<fieldset class="listSMW">'+
 			'<legend><label><input type="checkbox" id="smwask" name="smwask" value="smw"> '+JWB.msg('legend-smw', JWB.msg('smw-slow'))+'</label></legend>'+
@@ -1908,14 +1997,14 @@ JWB.init = function() {
 	ondragover = function(e) {
 		e.preventDefault();
 	};
-	document.onsecuritypolicyviolation = function(e) {
+	document.addEventListener("securitypolicyviolation", function(e) {
 		console.log('violated CSP:', e);
 		if (e.blockedURI == 'blob') {
 			JWB.worker.supported = false; // tell the next JWB.worker.init() that it shouldn't even try.
 		} else if (JWB && JWB.msg) {
 			alert(JWB.msg('csp-error', e.violatedDirective))
 		}
-	}
+	})
 	
 	$('.JWBtab').click(function() {
 		$('.active').removeClass('active');

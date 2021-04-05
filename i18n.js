@@ -86,9 +86,12 @@ JWB.messages.en = {
 	'tip-import-setup':		'Upload settings files (JSON file format) from your computer.',
 	'update-setup':			'Refresh',
 	'tip-update-setup':		'Refresh the settings stored on your /$1 page',
-	'label-performance':	'Performance',
+	'label-limits':			'Limits',
 	'tip-time-limit':		'The time limit for any given (RegEx) match rule is allowed to run; applies to both replacing AND skip rules.',
 	'time-limit':			'RegEx time limit',
+	'tip-diff-size-limit':	'The maximum amount of characters added and/or removed. Set to 0 for no limit. This can be used as a sanity check to prevent unexpectedly large additions or removals in a bot task.',
+	'diff-size-limit':		'Diff size limit',
+	'size-limit-exceeded':	'The size difference of your change ($1 characters) exceeds the limit set in the "setup" tab. Set the limit to 0 to ignore this.',
 
 	// Tab 2
 	'edit-summary':			'Summary:',
@@ -155,6 +158,8 @@ JWB.messages.en = {
 	'protect-header':		'Protect options',
 	'protect-edit':			'Edit:',
 	'protect-move':			'Move:',
+	'protect-upload':		'Upload:',
+	'protect-like-edit':	'Same as Edit',
 	'protect-none':			'No protection', // This is the default label. It should indicate that the dropdown menu is used for selecting protection levels
 	'protect-autoconf':		'Autoconfirmed',
 	'protect-sysop':		'Sysop only',
@@ -171,6 +176,7 @@ JWB.messages.en = {
 							"Please review these settings in the 'Content' and 'Skip' tabs.",
 	'autosave-error':		"There was a problem while submitting the previous page. Please check the '$1' tab and verify if the previous edits went through correctly.",
 	'csp-error':			'Unable to perform previous action: violated Content Security Policy "$1".',
+	'confirm-continue':		'Continue?',
 	
 	//Statuses
 	'status-alt':			'loading...',
@@ -215,7 +221,8 @@ JWB.messages.en = {
 	'setup-delete-blank':	'You can\'t delete the blank setup.',
 	'duplicate-settings':	'Conflicting settings pages exist. Please move all settings from "$1" to "$2" and turn it into a redirect (see $3 for more information on JavaScript redirects).',
 	'setup-move-summary':	'Moving JWB settings page to new location /*automatic on JWB startup*/', // this is based on wgContentLanguage, not wgUserLanguage.
-	'moved-settings':		'Your settings page has been automatically moved from "$1" to the more appropriate "$2" as a new JWB feature. This action has been logged in the "$3" tab.', // receives JWB message 'tab-log' as $3.
+	'moved-settings':		'Your settings page has been automatically moved from "$1" to the more appropriate "$2" as a new JWB feature. This action has been logged in the "$3" tab.\n'+ // receives JWB message 'tab-log' as $3.
+							'Please request the page\'s content model to be updated to JSON by an administrator.',
 	
 	//Pagelist generating
 	'namespace-main':		'main',
@@ -249,6 +256,10 @@ JWB.messages.en = {
 	'legend-pl':			'Links on page',
 	'label-pl':				'On page:',
 	'tip-pl':				'Fetch a list of links on the page(s).\nSeperate values with vertical bar `|`.',
+	'legend-sr':			'Wiki search',
+	'tip-sr':				'Search using the standard search function.',
+	'label-sr':				'Search term:',
+	'placeholder-sr':		'Recommended: $1/example/ or $2/example/',
 	'legend-smw':			'Semantic MediaWiki query (<i>$1</i>)', // $1 == 'smw-slow'
 	'smw-slow':				'slow',
 	'label-smw':			"Enter Semantic MediaWiki query here. Don't forget to specify a query limit, e.g.:$1", // $1 == "\n|limit=500"

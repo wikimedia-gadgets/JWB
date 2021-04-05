@@ -51,9 +51,12 @@ JWB.messages.nl = {
 	'tip-import-setup':		'Upload bestanden met JWB instellingen (JSON bestandsformaat) van uw computer.',
 	'update-setup':			'Ververs',
 	'tip-update-setup':		'Herlaad de instellingen die op uw /$1 pagina zijn opgeslagen.',
-	'label-performance':	'Performance',
+	'label-limits':			'Performance',
 	'tip-time-limit':		'Het tijdslimiet wat elke (RegEx)-regel maximaal mag gebruiken; geldt voor zowel vervang- als skip-regels.',
 	'time-limit':			'RegEx tijdslimiet',
+	'tip-diff-size-limit':	"De maximumgrootte van de wijziging. Zet op 0 om geen limiet in te stellen op de grootte. Dit werkt als een 'sanity check' om te zorgen dat een wijziging onverwachts veel toevoegt/verwijdert.",
+	'diff-size-limit':		'Wijzigingsgrootte',
+	'size-limit-exceeded':	'Deze wijziging ($1 karakters) is groter dan het ingestelde maximum in de "setup" tab. Zet het limiet op 0 om dit bericht te voorkomen.',
 
 	// Tab 2
 	'edit-summary':			'Samenvatting:',
@@ -120,6 +123,8 @@ JWB.messages.nl = {
 	'protect-header':		'Beschermingsopties',
 	'protect-edit':			'Bewerken:',
 	'protect-move':			'Hernoemen:',
+	'protect-upload':		'Uploaden:',
+	'protect-like-edit':	'Zelfde als Bewerk',
 	'protect-none':			'Geen beveiliging', // This is the default label. It should indicate that the dropdown menu is used for selecting protection levels
 	'protect-autoconf':		'Autobevestigd',
 	'protect-sysop':		'Alleen administrators',
@@ -136,6 +141,7 @@ JWB.messages.nl = {
 							"Kijk in de 'Inhoud'  en 'Skip' tabs om deze instellingen aan te passen.",
 	'autosave-error':		"Probleem bij opslaan van vorige pagina. Controleer in de '$1' tab of de vorige bewerking geslaagd is.",
 	'csp-error':			'Kan vorige handeling niet uitvoeren: schending van Content Security Policy "$1".',
+	'confirm-continue':		'Wilt u doorgaan?',
 	
 	//Statuses
 	'status-alt':			'laden...',
@@ -181,8 +187,8 @@ JWB.messages.nl = {
 	'duplicate-settings':	"Conflicterende instellingenpagina's. Verplaats alle instellingen van \"$1\" naar \"$2\" en maak $1 een doorverwijzing"+
 							"(zie $3 voor meer informatie over JavaScript-doorverwijzingen).",
 	'setup-move-summary':	'Verplaats JWB-instellingen naar nieuwe locatie /*automatisch bij opstarten JWB*/', // this is based on wgContentLanguage, not wgUserLanguage.
-	'moved-settings':		'Uw instellingenpagina is automatisch verplaatst van "$1" naar de gepastere "$2", als een nieuwe JWB-feature. Deze actie is vastgelegd in de "$3" tab.', // receives JWB message 'tab-log' as $3.
-
+	'moved-settings':		'Uw instellingenpagina is automatisch verplaatst van "$1" naar de gepastere "$2", als een nieuwe JWB-feature. Deze actie is vastgelegd in de "$3" tab.\n'+ // receives JWB message 'tab-log' as $3.
+							'U kunt verzoeken of een administrator het "content-model" van de pagina aanpast naar JSON.',
 	//Pagelist generating
 	'namespace-main':		'artikel',
 	'label-ns-select':		'Naamruimte:',
@@ -215,6 +221,10 @@ JWB.messages.nl = {
 	'legend-pl':			'Links op pagina',
 	'label-pl':				'Op pagina:',
 	'tip-pl':				'Verkrijg de lijst van links gebruikt op de pagina(s).\nSplits meerdere pagina\'s met verticale strepen `|`.',
+	'legend-sr':			'Doorzoek wiki',
+	'tip-sr':				'Zoek met de standaard zoekfunctie.',
+	'label-sr':				'Zoekwoord:',
+	'placeholder-sr':		'Tip: $1/voorbeeld/ of $2/voorbeeld/',
 	'legend-smw':			'<i>Semantic MediaWiki</i>-verzoek (<i>$1</i>)', // $1 == 'smw-slow'
 	'smw-slow':				'langzaam',
 	'label-smw':			"Voer Semantic MediaWiki-query in. Vergeet niet een limiet in te stellen, bijvoorbeeld:$1", // $1 == "\n|limit=500"

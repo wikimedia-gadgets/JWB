@@ -68,6 +68,7 @@ JWB.worker.function = function() {
 	
 	onmessage = function(e) {
 		let data = e.data;
+		console.log('worker message', data);
 		let callback = (result, err) => postMessage({cmd: data.cmd, result: result, err: err});
 		switch (data.cmd) {
 			case 'match':

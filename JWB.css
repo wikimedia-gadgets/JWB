@@ -41,6 +41,10 @@ body {
 	margin: 0 4px;
 }
 
+hr {
+	margin: 0.15em 0;
+}
+
 #resultWindow {
 	resize: vertical;
 	height: 300px;
@@ -51,7 +55,7 @@ body {
 }
 #resultWindow * {resize: none;}
 #inputsWindow {
-	height: 350px;
+	height: 360px;
 	padding-bottom: 30px;
 	border-bottom: 1px solid #AAA;
 }
@@ -290,9 +294,10 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	border-left: 1px solid #AAA;
 }
 
-.timelimit-label {
+#limits label {
 	display: block;
 	position: relative;
+	clear: right;
 }
 .timelimit-label::after {
 	content: "ms";
@@ -301,13 +306,15 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	right: 10px;
     font-style: italic;
 }
-#timelimit {
+#limits input {
 	width: 100px;
-    padding-right: 25px;
-    box-sizing: border-box;
 	margin-right: 5px;
 	float: right;
 	text-align: right;
+    box-sizing: border-box;
+}
+#timelimit {
+	padding-right: 25px;
 }
 
 #actionlog {
@@ -361,6 +368,7 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 #smwquery {
 	height: 3em;
 	padding: 2px;
+	resize: vertical;
 }
 
 #watchPage {
@@ -465,6 +473,9 @@ tr[data-line]:not(.lineheader) {cursor: pointer;}
 }
 fieldset[disabled] {
 	opacity: 0.7;
+}
+select option[value=""] {
+	font-style: italic;
 }
 #ns-filter {
 	position: absolute;

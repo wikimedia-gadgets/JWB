@@ -2,7 +2,13 @@
 {|style="float:right;text-align:center;width:120px;background:#eee5ff;border:2px solid #899DEE;border-radius:2px;padding:5px;margin:5px;"
 |[[File:Text-x-source.svg|100px]]
 |-
+|[https://github.com/Joeytje50/JWB Github repo]
+|-
+|[[/Changelog/]]
+|-
 |[[User:Joeytje50/JWB.js|Source code]]
+|-
+|[[User:Joeytje50/JWB.js/worker.js|Worker file]]
 |-
 |[[User:Joeytje50/JWB.js/i18n.js|i18n file]]
 |-
@@ -10,7 +16,7 @@
 |-
 |<span class=plainlinks>[{{fullurl:Wikipedia:AutoWikiBrowser/Script}} '''Run script''']</span>
 |-
-|[[Special:MyPage/JWB-settings.json|Your settings page]]
+|[[Special:MyPage/JWB-settings.json|Your settings]]
 |}
 {{shortcut|WP:JWB}}
 
@@ -84,8 +90,17 @@ To exclude either subcategories, files, or regular pages, simply uncheck the res
 :This generator simply fetches all pages in your watchlist.
 ;Links on page
 :Gets a list of all links that are included in the specified page. This can be useful when using a more complex page list generator such as [[mw:Extension:DynamicPageList|DPL]].
+;Search
+:Retrieves a list of pages that get found based on a regular Wiki search. Highly recommended to restrict the results based on [[mw:Help:CirrusSearch|CirrusSearch]], e.g. <code>insource:/example/</code> or <code>intitle:/example/</code>.
+;Semantic MediaWiki search
+:On wikis that have the Semantic MediaWiki extension installed, an additional box will appear which allows users to enter a SMW query which will be used to generate a page list. If the query includes a query to a specific property, the first returned property (with other properties being ignored) will be loaded as that page's [[#Page variables|page variable]], accessible through <code>$x</code>. For example <code><nowiki>[[Category:Materials]]|?Melting point</nowiki></code> to generate a list of materials and their "Melting point" property.
+:Because this SMW query is executed separately from the other pagelist queries, using a combination of SMW and other queries might generate duplicate pages, which can be filtered out using the button in the 'Setup' tab.
 
 Note that if multiple boxes are selected, the [[union (set theory)|union]] of matching pages will be generated. e.g. using "Category" and "Pages with prefix" will generate all pages which are in the given category ''or'' start with the given prefix.
+
+==Limits==
+
+In the Setup tab, below the page list and [[#Settings|settings]] options, you can set limits to JWB. Using these limits, you may restrict the amount of time taken by JWB on any one find&replace rule, or the amount of characters added or removed by any one edit. Note that setting a diff size limit does '''not''' give any guarantees about the quality of your edit. Do '''not''' solely rely on this setting to prevent your find&replace rules from behaving unexpectedly. This is intended ''only'' as a form of 'insurance' that your edits will not add or remove unexpected amounts of text from a page.
 
 ==Skip options==
 [[File:JWB Skip options.png|thumb|Skip options]]
@@ -189,7 +204,7 @@ Deleting, like moving uses the summary box for its delete reason.
 
 ===Protecting===
 
-For protection, you can specify the protection levels for moving and creating separately. When the page doesn't exist, the level defined in the edit protection is instead applied to the create protection. The expiry field allows input in the same way as normal time input does. That means inputs like "1 hour", "5 January 2000", etc. are allowed here.
+For protection, you can specify the protection levels for Editing, Moving and Uploading separately. When the page doesn't exist, the level defined in the ''Edit'' protection is instead applied to the ''Create'' protection. The ''Upload'' protection is only applied to pages where this is applicable (i.e. File pages). The expiry field allows input in the same way as normal time input does. Inputs like "1 hour", "5 January 2000", etc. are allowed here.
 
 ==Logs==
 [[File:JWB Log.png|thumb|Log]]

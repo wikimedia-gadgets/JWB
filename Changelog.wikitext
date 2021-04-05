@@ -1,0 +1,60 @@
+<!--
+:''{{subst:#time:d F Y}}''
+-->
+== Version 4 ==
+=== 4.2.2 ===
+:''04 April 2021''
+* New setting is now available in the 'setup' tab to prevent diff sizes exceeding a certain amount of characters. This can be used as a sanity check, as well as being useful to avoid a [[Higgs-bugson]] that is causing pages to be partially blanked sometimes.
+* The next page in the page list will now start being loaded and processed while your previous page is being submitted, instead of waiting for the submission to finalize.
+
+=== 4.2.1 ===
+:''28 March 2021''
+* '''Bugfix:''' Prevent errors when editing pages that do not exist. Due to some issues, JWB did not handle nonexistent pages correctly, which has been resolved.
+* Saving your settings to the wiki will now be logged as an edit in the 'Log' tab.
+
+=== 4.2.0 ===
+:''20 March 2021''
+* Officially the dankest version of JWB.
+* Page previews will now perform [[mw:Pre-save transforms|Pre-save transforms]] such as substituting templates.
+* '''Bugfix:''' Fixed bug that caused pagelist generating based on links on pages to result in no pages.
+* '''Bugfix:''' Fixed issue causing errors on pages that do not feature line numbers ([https://en.wikipedia.org/w/index.php?title=User_talk:Joeytje50/JWB&oldid=1010076931#Failure_at_Wikisource_in_the_Page_namespace details]).
+* '''Bugfix:''' Fixed issue causing infinitely loading replacement rules, requiring to stop/start editing to continue.
+
+=== 4.1.1 ===
+:''18 March 2021''
+* '''Bugfix:''' Fix bug in moving pages that threw an error after a successful move
+* '''Bugfix:''' Fix bug where 'skip when (not) contains' rules did not work without regex.
+* Disable buttons in the 'Other' tab when busy submitting to the API, similar to how the edit buttons are disabled while loading.
+
+=== 4.1.0 ===
+:''2 March 2021''
+* Allow searching using the standard wiki search tool, to generate page lists. This search does support <code>insource</code> and <code>intitle</code> searches, made possible by [[mw:Help:CirrusSearch|CirrusSearch]].
+
+=== 4.0.3 ===
+:''28 February 2021''
+* Protecting now supports Upload protection for files. If upload protection is specified for a page that does not allow upload protection (i.e. anything but files), this protection is ignored.
+* Move protection (and the new upload protection) now have the option to select the upload level to be the same as the edit protection. This makes it unnecessary to change multiple dropdowns to set equal protection for all actions.
+
+=== 4.0.2 ===
+:''23 February 2021''
+*''Technical update:'' Changed [[mw:API:Revisions]] for edit diffs to [[mw:API:Compare]]. Once [[mw:API:Compare#Parameter history|the <code>toslots</code> parameter's support]] is more common, that version will be used instead of the current diff function's <code>totext</code>.
+
+=== 4.0.1 ===
+:''23 February 2021''
+*'''Bugfix:''' Prevent <code><nowiki>{{subst:</nowiki></code> in places like replace rules from getting substituted on settings pages.
+
+=== 4.0.0 ===
+:''14 February 2021''
+* Asynchronous regular expressions: All regular expressions entered by the user will be executed in an asynchronous process. This means that a regular expression that ends up in a catastrophic backtracking loop, or expressions that otherwise might use up massive amounts of resources otherwise, will now be killed off once the time limit (which can be set in the 'Setup' tab) has been reached.
+* [[User:Joeytje50/JWB#Generating page lists|SMW search]]: Any wiki that has the Semantic MediaWiki extension installed will now have a new pagelist-generating box added to the bottom of the interface. This can be used to execute SMW searches in the same way you would use Special:Ask. If a property is included in this query, the value of that property will be included as the [[User:Joeytje50/JWB#Page variables|page variable]] for that page.
+* Strict prefix search: Prefix search has been updated to include a toggle whether to perform a fuzzy search or an exact prefix search. Before, the only available option was the same as the setting used in [[Special:Search|the search bar at the top of every page]], which at some point changed from an exact prefix match to a fuzzy search.
+* Skip by category: A new skip rule has been introduced; skipping if a page is member of a category (including if that category is added through a template) is now possible in a new field in the 'Skip' tab.
+* Settings page move: On the first startup of JWB after these changes, your settings page will be moved to [[Special:MyPage/JWB-settings.json]] (from the old /JWB-settings.js). This is done to reflect the contents of the settings pages. Because there is no way to preserve the page history ''and'' change the [[mw:Manual:Page content models|content model]] of the page, users will have to request an administrator to update the content model of their settings page if they want the page to reflect this page move. New users will automatically use the JSON content model for their settings.
+* Technical optimizations and code updates:
+** Optimized the page skip rules to skip for the first matching rule that is detected, as opposed to gathering information for all skip rules and skipping afterwards.
+** Updated token system from the deprecated pre-1.24 system to the [[mw:API:Tokens|current 1.24+ system]].
+** i18n pages have been split up. Due to its function as the 'fallback' language in case of missing messages, English i18n messages are still stored on [[User:Joeytje50/JWB.js/i18n.js|the main i18n page]], but all other languages have been moved to [[Special:PrefixIndex/User:Joeytje50/JWB.js/i18n-|their own file]].
+** Minor bug fixes
+
+== Version 3 and before ==
+No change log has been maintained for versions before 4.0.
