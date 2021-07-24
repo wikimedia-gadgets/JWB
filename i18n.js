@@ -32,7 +32,7 @@ if (!window.JWB || JWB === false) {
 		JWB.imports.i18n[lang] = '//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/i18n-'+file+'.js&action=raw&ctype=text/javascript';
 	}
 })([ // List all languages here:
-	'nl', 'gl', 'ru', 'uk', 'be', 'fa', 'zh_hans', 'zh_hant',
+	'nl', 'gl', 'ru', 'uk', 'be', 'he', 'fa', 'zh_hans', 'zh_hant',
 	'zh=zh_hans', 'zh_cn=zh_hans', 'zh_my=zh_hans', 'zh_sg=zh_hans', // zh_hans redirects
 	'zh_hk=zh_hant', 'zh_mo=zh_hant', 'zh_tw=zh_hant', // zh_hant redirects
 ]);
