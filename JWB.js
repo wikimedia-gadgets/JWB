@@ -442,7 +442,7 @@ JWB.api.get = function(pagename) {
 			skipContains = $('#skipContains').val();
 			skipNotContains = $('#skipNotContains').val();
 			if ((skipContains && JWB.page.content.includes(skipContains)) ||
-				(skipNotContains && JWB.page.content.includes(skipNotContains))) {
+				(skipNotContains && !JWB.page.content.includes(skipNotContains))) {
 				console.log('skipped page before replaces')
 				return JWB.next();
 			}
