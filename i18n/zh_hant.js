@@ -17,7 +17,7 @@ JWB.messages.zh_hant = {
 	'tab-log': '日誌',
 	'pagelist-caption': '在下方輸入頁面列表:',
 	'editbox-caption': '編輯區域',
-	'editbox-currentpage': '正在編輯: <a href="/wiki/$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage': '正在編輯: <a href="$2" target="_blank" title="$1">$1</a>',
 	'no-changes-made': '沒有可應用更改。按「跳過」轉至列表中的下一項。',
 	'page-not-exists': '頁面不存在，無法展示差異。',
 

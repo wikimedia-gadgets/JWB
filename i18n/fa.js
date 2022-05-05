@@ -17,7 +17,7 @@ JWB.messages.fa = {
 	'tab-log':				'سیاهه',
 	'pagelist-caption':		'فهرستی از صفحه‌ها وارد کنید:',
 	'editbox-caption':		'جعبه ویرایش',
-	'editbox-currentpage':	'شما در حال ویرایش <a href="/wiki/$2" target="_blank" title="$1">$1</a> هستید:',
+	'editbox-currentpage':	'شما در حال ویرایش <a href="$2" target="_blank" title="$1">$1</a> هستید:',
 	'no-changes-made':		'هیچ تغییری داده نشد.  دکمهٔ «رد کردن» را بزنید تا به صفحهٔ بعدی در فهرست بروید.',
 	'page-not-exists':		'صفحه وجود ندارد، تفاوت را نمی‌توان ساخت.',
 	

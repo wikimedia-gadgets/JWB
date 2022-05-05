@@ -16,7 +16,7 @@ JWB.messages.uk = {
 	'tab-log':				'Журнал',
 	'pagelist-caption':		'Вкажіть назви сторінок:',
 	'editbox-caption':		'Область редактирования',
-	'editbox-currentpage':	'Ви редагуєте: <a href="/wiki/$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'Ви редагуєте: <a href="$2" target="_blank" title="$1">$1</a>',
 	'no-changes-made':		'Змін немає. Натисніть кнопку «Пропустити», щоб перейти до наступної сторінки в списку.',
 	'page-not-exists':		'Сторінка не існує, перегляд зміни не може бути створено.',
  

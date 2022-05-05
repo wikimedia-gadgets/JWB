@@ -52,7 +52,7 @@ JWB.messages.en = {
 	'tab-log':				'Log',
 	'pagelist-caption':		'Enter list of pages:',
 	'editbox-caption':		'Editing area',
-	'editbox-currentpage':	'You are editing: <a href="/wiki/$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'You are editing: <a href="$2" target="_blank" title="$1">$1</a>',
 	'no-changes-made':		'No changes made. Press skip to go to the next page in the list.',
 	'page-not-exists':		'Page doesn\'t exist, diff can not be made.',
 	
