@@ -17,7 +17,7 @@ JWB.messages.nl = {
 	'tab-log':				'Log',
 	'pagelist-caption':		'Lijst met pagina\'s:',
 	'editbox-caption':		'Bewerkingsveld',
-	'editbox-currentpage':	'Je bewerkt nu: <a href="/wiki/$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'Je bewerkt nu: <a href="$2" target="_blank" title="$1">$1</a>',
 	'no-changes-made':		'Geen bewerkingen gemaakt. Druk op skip om door te gaan met de volgende pagina in de lijst.',
 	'page-not-exists':		'Pagina bestaat niet. Wijzigingen kunnen niet worden opgesteld.',
 	
