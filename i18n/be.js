@@ -16,7 +16,7 @@ JWB.messages.be = {
 	'tab-log':				'Часопіс',
 	'pagelist-caption':		'Пакажыце назвы старонак:',
 	'editbox-caption':		'Вобласць рэдагавання',
-	'editbox-currentpage':	'Вы рэдагуеце: <a href="/wiki/$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'Вы рэдагуеце: <a href="/wiki/$2" target="_blank" title="$1" accesskey="c">$1</a>',
 	'no-changes-made':		'Змен няма. Націсніце кнопку «Прапусціць», каб перайсці да наступнай старонкі ў спісе.',
 	'page-not-exists':		'Старонка не існуе, прагляд змены не можа быць створаны.',
  

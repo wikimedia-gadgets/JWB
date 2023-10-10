@@ -16,7 +16,7 @@ JWB.messages.he = {
 	'tab-log':				'יומן',
 	'pagelist-caption':		'הכנס רשימת דפים:',
 	'editbox-caption':		'אזור עריכה',
-	'editbox-currentpage':	'אתה עורך את: <a href="/wiki/$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'אתה עורך את: <a href="/wiki/$2" target="_blank" title="$1" accesskey="c">$1</a>',
 	'no-changes-made':		'לא בוצעו שינויים. לחץ על כפתור "דלג" כדי לעבור לדף הבא.',
 	'page-not-exists':		'הדף לא קיים.',
 	

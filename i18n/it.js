@@ -17,7 +17,7 @@ JWB.messages.it = {
 	'tab-log':				'Log',
 	'pagelist-caption':		'Lista di pagine:',
 	'editbox-caption':		'Area di modifica',
-	'editbox-currentpage':	'Modifica di <a href="/wiki/$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'Modifica di <a href="/wiki/$2" target="_blank" title="$1" accesskey="c">$1</a>',
 	'no-changes-made':		'Nessuna modifica effettuata. Premere salta per andare alla pagina seguente della lista.',
 	'page-not-exists':		'Pagina non esistente, non è possibile effettuare il confronto.',
 	
