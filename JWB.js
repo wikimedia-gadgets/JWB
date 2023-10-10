@@ -1788,7 +1788,7 @@ JWB.init = function() {
 				'</section>'+
 				'<aside id="editBox">'+
 					'<b>'+JWB.msg('editbox-caption')+' - <span id="currentpage">'+JWB.msg('editbox-currentpage', ' ', ' ')+'</span></b>'+
-					'<textarea id="editBoxArea"></textarea>'+
+					'<textarea id="editBoxArea" accesskey=","></textarea>'+
 				'</aside>'+
 			'</div>'+
 		'</main>'+
