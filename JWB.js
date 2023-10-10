@@ -1867,7 +1867,7 @@ JWB.init = function() {
 	);
 	$('.JWBtabc[data-tab="2"]').html(
 		'<label class="minorEdit"><input type="checkbox" id="minorEdit" accesskey="i" checked> '+JWB.msg('minor-edit')+'</label>'+
-		'<label class="editSummary viaJWB">'+JWB.msg('edit-summary')+'<br/> <input class="fullwidth" type="text" id="summary" maxlength="500"></label>'+
+		'<label class="editSummary viaJWB">'+JWB.msg('edit-summary')+'<br/> <input class="fullwidth" type="text" id="summary" maxlength="500" accesskey="b"></label>'+
 		' <input type="checkbox" id="viaJWB" checked title="'+JWB.msg('tip-via-JWB')+'">'+
 		'<select id="watchPage">'+
 			'<option value="watch">'+JWB.msg('watch-watch')+'</option>'+
