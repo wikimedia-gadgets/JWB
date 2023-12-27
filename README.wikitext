@@ -2,7 +2,7 @@
 {|style="float:right;text-align:center;width:120px;background:#eee5ff;border:2px solid #899DEE;border-radius:2px;padding:5px;margin:5px;"
 |[[File:Text-x-source.svg|100px]]
 |-
-|[https://github.com/Joeytje50/JWB Github repo]
+|[https://github.com/Joeytje50/JWB GitHub repo]
 |-
 |[[/Changelog/]]
 |-
@@ -20,18 +20,20 @@
 |}
 {{shortcut|WP:JWB}}
 
-'''JavaScript Wiki Browser''' is a script that allows users to make semi-automated edits more easily. For general use, it works similarly to the [[Wikipedia:AutoWikiBrowser|downloadable AutoWikiBrowser]], but it requires no executable installation, and can run on all major operating systems. This script heavily borrows from AWB in design and functionality, for example using its [[WP:AWB/T|Regex Typo Fixing]] and [[WP:AWB/C|User Checkpage]]. To use this script, you need to be listed on the wiki's AutoWikiBrowser CheckPage ([[Project:AutoWikiBrowser/CheckPage]] on your wiki), or have administrator rights on the wiki.
+'''JavaScript Wiki Browser''' is a script that allows users to make semi-automated edits more easily. For general use, it works similarly to the [[Wikipedia:AutoWikiBrowser|downloadable AutoWikiBrowser]], but it requires no executable installation, and can run on all major operating systems. This script heavily borrows from AWB in design and functionality, for example using its [[WP:AWB/T|Regex Typo Fixing]] and [[WP:AWB/C|User Checkpage]]. To use this script, you need to be listed on the wiki's AutoWikiBrowser CheckPage ([[Project:AutoWikiBrowser/CheckPageJSON]] on your wiki), or have administrator rights on the wiki.
 
-If you want to contribute to this project, you can create a pull request at [https://github.com/Joeytje50/JWB Github: Joeytje50/JWB]. This repo does require manual updates from me, so some minor changes made to the live version hosted here might not be live on Github immediately. If that is the case, I will try to merge any useful pull requests into the code of the live version. You can also use Github to contribute [[User:Joeytje50/JWB.js/i18n.js|i18n strings]].
+If you want to contribute to this project, you can create a pull request at [https://github.com/Joeytje50/JWB GitHub: Joeytje50/JWB]. This repo does require manual updates from me, so some minor changes made to the live version hosted here might not be live on GitHub immediately. If that is the case, I will try to merge any useful pull requests into the code of the live version. You can also use GitHub to contribute [[User:Joeytje50/JWB.js/i18n.js|i18n strings]].
 
 <table class="mw-collapsible mw-collapsed" style="display: none;"><tr><th>Show feed</th></tr><tr><td id="JWB-feed">This div is invisible unless [[/feed.js]] is installed. That script will replace this text with a table containing the most recent edits to each page relevant to JWB, as well as a list of missing i18n messages.</td></tr></table>
 
 ==Installation==
-To install this script on any wiki, put the following code in your JavaScript file (for example [[Special:MyPage/common.js]], [[meta:Special:MyPage/global.js]], or a skin-specific JS file):
+Before using this script, you first need to add an import to your personal JavaScript file. Even if the wiki on which it is being used already has some infrastructure for [[WP:AWB|AWB]], you need to install it for yourself. It is not recommended to install this script on a wiki-wide basis.
 
-<source lang="javascript">
+To install this script for yourself on any wiki, paste the following code in your JavaScript file (typically this is [[Special:MyPage/common.js]], but skin-specific JS files could also be used):
+
+<syntaxhighlight lang="javascript">
 mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.js&action=raw&ctype=text/javascript');
-</source>
+</syntaxhighlight>
 
 or for users on en.wikipedia.org itself:
 
@@ -40,7 +42,7 @@ or for users on en.wikipedia.org itself:
 </pre> 
 (ignore the error when saving)
 
-Note that, to use this script, you '''must''' be listed on the checkpage located at ''Project:AutoWikiBrowser/CheckPage'' (ie. [[Project:AutoWikiBrowser/CheckPage|this page]] on this wiki), if that page exists. If no such page exists on the wiki you're using it on, all users are allowed to use the tool.
+Note that, to use this script, you '''must''' be listed on the checkpage located at ''Project:AutoWikiBrowser/CheckPageJSON'' (i.e. [[Project:AutoWikiBrowser/CheckPageJSON|this page]] on this wiki), '''if''' that page exists. If no such page exists on the wiki you're using it on, all users are allowed to use the tool.
 
 ==Getting started==
 After installing the script, simply go to <span class="plainlinks">[{{fullurl:Wikipedia:AutoWikiBrowser/Script}} '''this page''']</span> to run the script. For users using the script on another wiki, simply go to the page ''Project:AutoWikiBrowser/Script'' on the wiki you'd like to start the script on, and have installed the [[#Installation|above code]] on.
@@ -109,13 +111,13 @@ Using the ''Skip'' tab, you can set several rules for which pages should be skip
 ;Redirects
 :You can either select to follow redirects and edit the page the redirect leads to (this will also follow double redirects), or edit the redirects themselves. You can also select to skip redirect pages altogether.
 ;No changes
-:If you select to skip when no changes are made, the page will automatically skip when the defined [[#Replacements|find&replace rules]] don't apply any changes to the page.
+:If you select to skip when no changes are made, the page will automatically skip when the defined [[#Replacements|find & replace rules]] don't apply any changes to the page.
 ;Page existence
 :You can either select to skip when the page exists, skip when it doesn't exist, or edit both existing and non-existing pages.
 ;Contents
 :You can skip either when the page contains a certain string, or when it doesn't contain that. If the phrase entered in ''When page contains'' results in '''any''' matches on the page, or if the phrase entered in ''When page doesn't contain'' results in '''no''' matches, the page will be skipped.
 :You can either enter a certain keyphrase that should or should not occur on the page, or you can select to use a regular expression. For more information on regular expressions, see [[#Using regex]].
-:Regex matches will only be allocated a limited amount of time if the browser and wiki settings support this feature<ref name="Worker">Technical details: Requires browser support for [https://caniuse.com/webworkers Web Workers] and website [[Content Security Policy]] allowing <code>script-src: blob:;</code> or <code>worker-src: blob:;</code></ref>. The time limit for ''each individual'' match rule can be set in the 'Setup' tab.
+:Regex matches will only be allocated a limited amount of time if the browser and wiki settings support this feature.<ref name="Worker">Technical details: Requires browser support for [https://caniuse.com/webworkers Web Workers] and website [[Content Security Policy]] allowing <code>script-src: blob:;</code> or <code>worker-src: blob:;</code></ref> The time limit for ''each individual'' match rule can be set in the 'Setup' tab.
 ;Categories
 :Pages that contain categories listed here (comma-separated or <code>|</code>-separated) will be skipped automatically.
 
@@ -127,7 +129,7 @@ In the ''Editing'' tab, you can specify the basic settings for editing. You can 
 
 While editing, you can also directly add or remove pages to or from your watchlist by pressing the button next to the watchlist dropdown. The button will be labelled with what action it will trigger (either adding or removing). 
 
-Every page will automatically display the difference between the stored content, and the content after the [[#Replacements|find&replace rules]] are applied. You can also press the ''Preview'' button to see the generated output. Some styles may not be loaded in this view though, since JWB uses a page structure different from the normal page contents. This may cause styles that depend on the position in the document not to function anymore.
+Every page will automatically display the difference between the stored content, and the content after the [[#Replacements|find & replace rules]] are applied. You can also press the ''Preview'' button to see the generated output. Some styles may not be loaded in this view though, since JWB uses a page structure different from the normal page contents. This may cause styles that depend on the position in the document not to function anymore.
 
 Users with the ''bot'' usergroup, that are also listed on the wiki's AutoWikiBrowser checklist under the 'bot' category, will also be able to automatically save their edits. This can be done with a throttle to prevent overloading the server. The number entered in the "every <code>[]</code> sec" field is the number of seconds ''between'' edits. This number can also contain decimals (using a <code>.</code> as [[decimal mark]]).
 
@@ -137,14 +139,14 @@ Perhaps the most important feature of JWB is automated replacements. You can def
 
 Newlines can be inserted in both Regex and regular mode, by putting <code>\n</code> in the place where you'd like to insert a newline character. You can also insert a backslash by putting <code>\\</code> in the text box.
 
-Regex replacements will only be allocated a limited amount of time if the browser and wiki settings support this feature <ref name="Worker"/>. The time limit for ''each individual'' regex replacement rule can be set in the 'Setup' tab. This feature prevents freezing up the entire tool when a regex takes too long to execute.
+Regex replacements will only be allocated a limited amount of time if the browser and wiki settings support this feature.<ref name="Worker"/> The time limit for ''each individual'' regex replacement rule can be set in the 'Setup' tab. This feature prevents freezing up the entire tool when a regex takes too long to execute.
 
 <references/>
 
 ===Typo fixing===
 {{Main|User:Joeytje50/RETF}}
 
-You can use [[WP:AutoWikiBrowser/Typos|the AWB typo list]] to automatically fix any typos that exist on the page. Keep in mind that you must always check if the automatic fixes are correct. These automatic fixes will not be applied to image names, template names and parameters<ref name="params"/>, quotes<ref name="quotes"/>, and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target. Any lines of text that contain a {{t|sic}} indicator will also be ignored by this typo fixer<ref name="sic"/>. These rules are taken from [[WP:AutoWikiBrowser/Typos#AutoWikiBrowser (AWB)|the rules listing for AWB]].
+You can use [[WP:AutoWikiBrowser/Typos|the AWB typo list]] to automatically fix any typos that exist on the page. Keep in mind that you must always check if the automatic fixes are correct. These automatic fixes will not be applied to image names, template names and parameters,<ref name="params"/> quotes,<ref name="quotes"/> and any text following a colon or asterisk, as well as skipping any rule that also matches a wikilink target. Any lines of text that contain a {{t|sic}} indicator will also be ignored by this typo fixer.<ref name="sic"/> These rules are taken from [[WP:AutoWikiBrowser/Typos#AutoWikiBrowser (AWB)|the rules listing for AWB]].
 
 '''Note: ''' Due to [https://caniuse.com/#search=lookbehind some browsers not supporting Regex lookbehinds], it is recommended to run this feature of JWB from one of the supporting browsers. At the time of writing, this includes Google Chrome, Firefox, and Opera. Note that even for browsers that support it, older versions may not have, and users should check if they are using an up-to-date version or else not be able to perform as many typo fixes as other browsers.
 
@@ -156,13 +158,15 @@ Do note that this uses the typo list on the wiki the script is executed from. If
 <ref name="sic">A line where a transcribed typo has already been manually marked will likely have been spell-checked manually before. Chances are that any typo occurring ''anywhere'' on the same line of text will also be an intentional or transcribed typo, and therefore should ''not'' be fixed.</ref>
 </references>
 
+If you wish to disable RETF for a single page, you can use the button below the RETF checkbox to reload the page contents without RETF applied to it. This can be useful when editing pages with intentional misspellings or old language, for example. To re-apply RETF again after having disabled it, simply stop and restart JWB to re-apply automatic replacements as usual, including RETF.
+
 ===Using regex===
 
-Aside from simple text find&replace rules, you can also define regular expression replacements. Here you have more control over what gets matched, and what doesn't. You can specify the flags you'd like to use in the box next to the ''Regular Expression'' checkmark.
+Aside from simple text find & replace rules, you can also define regular expression replacements. Here you have more control over what gets matched, and what doesn't. You can specify the flags you'd like to use in the box next to the ''Regular Expression'' checkmark.
 
 In this JWB script, you can also specify the <code>_</code> (underscore) flag. That will make the expression treat all spaces and underscores equally. That can be useful when dealing with wikilinks, template transclusions, etc.
 
-To perform multiple replacements on the same page, you can use the ''More repace fields'' button, which will open up a window where you can add more rules in the same format as the format in the ''Editing'' tab. When you press {{kbd|Tab}} while having your cursor on the last replacement rule, another set of inputs will be added. Alternatively, you can press the ''Add more fields'' button.
+To perform multiple replacements on the same page, you can use the ''More replace fields'' button, which will open up a window where you can add more rules in the same format as the format in the ''Editing'' tab. When you press {{kbd|Tab}} while having your cursor on the last replacement rule, another set of inputs will be added. Alternatively, you can press the ''Add more fields'' button.
 
 To test regular expressions (albeit without the <code>_</code> flag), you can use online IDEs such as http://regex101.com/, http://debuggex.com/, or http://regexr.com/.
 
@@ -172,7 +176,7 @@ Checking this box will cause the replacement rule to be performed only on conten
 
 *Comments: <code><nowiki><!-- This will be ignored --></nowiki></code>
 *Code tags: contents of <code>&lt;nowiki&gt;</code>, <code>&lt;code&gt;</code>, <code>&lt;source&gt;</code>, <code>&lt;syntaxhighlight&gt;</code> and <code>&lt;pre&gt;</code> will be ignored
-*Formatting tags: <code>&lt;math&gt;</code>, <code>&lt;gallery&gt;</code>, <code>&lt;math&gt;</code> and <code>&lt;timeline&gt;</code>
+*Formatting tags: <code>&lt;math&gt;</code>, <code>&lt;gallery&gt;</code> and <code>&lt;timeline&gt;</code>
 
 The content within those tags will be left untouched. This option will also work when not using regular expressions.
 
@@ -184,15 +188,15 @@ JWB allows you to store your current settings either on the wiki, or on your own
 
 Saving to the wiki stores your settings on [[Special:MyPage/JWB-settings.json]]. Settings from this page are also automatically loaded to JWB when it loads, and the settings named <code>"default"</code> will automatically be applied when it loads. If you've modified your JWB settings on your /JWB-settings.json subpage, you can also refresh them in JWB by clicking the ''Update'' button.
 
-You can also download the settings as a JSON file. When saving this file, be sure to specify the file extension <code>.json</code>, otherwise you won't be able to select it via the ''Import'' button. You can import files by either clicking ''Import'' and selecting the JSON file, or by dragging a JSON file over the JWB window and releasing it (drag&drop). If the file extension is JSON, it will automatically load the settings from the file.
+You can also download the settings as a JSON file. When saving this file, be sure to specify the file extension <code>.json</code>, otherwise you won't be able to select it via the ''Import'' button. You can import files by either clicking ''Import'' and selecting the JSON file, or by dragging a JSON file over the JWB window and releasing it (drag & drop). If the file extension is JSON, it will automatically load the settings from the file.
 
 You can also delete a setup from your list by selecting the setup via the dropdown menu, and pressing ''Delete''. If you accidentally clicked this button, you can easily revert the deletion by pressing ''Undo'' in the status bar.
 
-As of February 14th, 2021, the settings page has moved from "JWB-settings.js" to "JWB-settings.json". If you had a settings page in this old location, this page will automatically be moved to the new location.
+As of February 14, 2021, the settings page has moved from "JWB-settings.js" to "JWB-settings.json". If you had a settings page in this old location, this page will automatically be moved to the new location.
 
 ==Other actions==
 
-Administrators can also perform other actions on the page. These actions can not be automated, not even on accounts with both ''bot'' and ''sysop'' rights.
+Administrators can also perform other actions on the page. These actions cannot be automated, not even on accounts with both ''bot'' and ''sysop'' rights.
 
 ===Moving===
 
@@ -217,14 +221,16 @@ Feel free to add this userbox in your userpage:
 {{User:Joeytje50/JWB/Userbox|nocat=y}}
 {{clear}}
 ==Contributing to JWB==
-If you would like to contribute code to JWB, please see [http://github.com/Joeytje50/JWB/ the Github repository]. You can create a pull request there to submit code or bug fixes to the script.
+If you would like to contribute code to JWB, please see [http://github.com/Joeytje50/JWB/ the GitHub repository]. You can create a pull request there to submit code or bug fixes to the script.
 
-If you would like to contribute internationalisation (i18n) messages to the script, please either submit a pull request on said Github repository, or post a message on [[User talk:Joeytje50/JWB.js/i18n.js]] with your of messages to be added. See also the message at the top of that talk page for more information.
+If you would like to contribute internationalisation (i18n) messages to the script, please either submit a pull request on said GitHub repository, or post a message on [[User talk:Joeytje50/JWB.js/i18n.js]] with your of messages to be added. See also the message at the top of that talk page for more information.
 
-If you would like to contribute missing messages in a language that already has some or most messages translated, please leave them on the existing message talk page (<code>User talk:Joeytje50/JWB.js/i18n-<LANGUAGE>.js</code>), and leave a link to my userpage to notify me. To obtain a full list of missing messages for existing language files, please install the following script in [[Special:MyPage/common.js]] (and ignore the error):
+If you would like to contribute missing messages in a language that already has some or most messages translated, please leave them on the existing message talk page (<code>User talk:Joeytje50/JWB.js/i18n-<LANGUAGE>.js</code>), and [[Template:Reply to|leave a link to my userpage]] to notify me. To obtain a full list of missing messages for existing language files, please install the following script in [[Special:MyPage/common.js]] (and ignore the error when saving):
 
 <pre>{{subst:lusc|User:Joeytje50/JWB/feed.js}}</pre>
 
 This will show a full list of missing messages in a collapsed box at the top of this page, just above the table of contents. Just click the button to "Show feed" to see the full list.
 
 [[Category:AutoWikiBrowser|JWB]]
+[[Category:Wikipedia scripts|JWB]]
+[[id:Wikipedia:JavaScript Wiki Browser]]

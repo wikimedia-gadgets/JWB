@@ -9,4 +9,3 @@ $.when(mw.loader.using(['mediawiki.util'], $.ready)).done( function() {
 
 if (mw.config.get('wgCanonicalNamespace')+':'+mw.config.get('wgTitle') === 'Project:AutoWikiBrowser/Script' && mw.config.get('wgAction') == 'view')
 	mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js&action=raw&ctype=text/javascript');
-

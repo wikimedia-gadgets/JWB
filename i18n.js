@@ -125,6 +125,8 @@ JWB.messages.en = {
 	'label-enable-RETF':	'Enable $1',
 	'label-RETF':			'RegEx Typo Fixing',
 	'tip-refresh-RETF':		'Refresh the typos list for new modifications.',
+	'skip-RETF':			'Disable RETF here',
+	'tip-skip-RETF':		'Reload the page content without RegEx Typo Fixing enabled for just this page.',
 	
 	// Tab 3
 	'label-redirects':		'Redirects:',
