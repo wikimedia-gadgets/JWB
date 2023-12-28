@@ -2,6 +2,16 @@
 :''{{subst:#time:d F Y}}''
 -->
 == Version 4 ==
+=== 4.4.2 ===
+:''28 December 2023''
+* Fix issues with internationalisation, causing different languages not to load properly in some situations.
+* Minor code refactoring
+
+=== 4.4.1 ===
+:''27 December 2023''
+* Add a checkbox to automatically (un)delete the talk page of any page that is being deleted
+* '''Bugfix:''' Fix an issue causing the text of the undelete button not updating when a page does not exist. Now the button text will represent whether a page will be deleted or undeleted when the button is pressed.
+
 === 4.4.0 ===
 :''11 July 2022''
 * Make the 'Setup' tab the default tab upon loading JWB, as that is the tab where you would generate page lists or select which settings to load.

@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.4.0
+ * @version 4.4.2
  * @author Joeytje50
  * </nowiki>
  */
@@ -40,7 +40,6 @@ window.JWBdeadman = false; // ADMINS: in case of fire, set this variable to true
 //TODO: Automatically generate full list of protection levels
 //TODO: Add 'Ignore quotes' alongside 'Ignore unparsed content'; for example: Ignore [] Unparsed content [] Quotes
 //TODO: Read Wikipedia:AutoWikiBrowser/Config for when not to apply typo fixes
-//TODO: Delete talk page along with main page (checkbox)
 //TODO: RETF disable any \b and some other cases
 //TODO: Fix deletedrevs deprecated API
 
@@ -97,36 +96,34 @@ window.JWB = {}; //The main global object for the script.
 	mw.loader.load(JWB.imports['JWB.css'], 'text/css');
 	mw.loader.load('mediawiki.diff.styles');
 	new mw.Api().loadMessagesIfMissing( [ 'pagecategorieslink', 'pagecategorieslink' ] );
-	
+
+	JWB.langs = [];
+
 	$.getScript(JWB.imports['i18n.js'], function() {
 		if (JWB.allowed === false) {
-			alert(JWB.msg('not-on-list'));
+			JWB.checkInit(); // deny access without attempting to load other languages.
 			return;
 		}
-		let langs = [];
+
 		if (JWB.lang !== 'en' && JWB.imports.i18n.hasOwnProperty(JWB.lang)) {
-			langs.push(JWB.imports.i18n[JWB.lang]);
+			JWB.langs.push(JWB.imports.i18n[JWB.lang]);
 			JWB.messages[JWB.lang] = JWB.messages[JWB.lang] || null;
 		} else if (JWB.lang !== 'en' && JWB.lang !== 'qqx') {
 			// this only happens if the language file does not exist.
 			JWB.lang = 'en';
 		}
 		if (JWB.contentLang !== 'en' && JWB.contentLang !== JWB.lang && JWB.imports.i18n.hasOwnProperty(JWB.contentLang)) {
-			langs.push(JWB.imports.i18n[JWB.contentLang]);
+			JWB.langs.push(JWB.imports.i18n[JWB.contentLang]);
 			JWB.messages[JWB.contentLang] = JWB.messages[JWB.contentLang] || null;
 		}
-		if (langs.length) {
-			$.when.apply($, langs.map(url => $.getScript(url))).done(function(r) {
-				if (JWB.allowed === true && JWB.messages.length == langs + 1) { // if there are two languages to load, wait for them both.
-					console.log('langs loaded');
-					JWB.init(); //init if verification has already returned true
-				} else if (JWB.allowed === false) {
-					alert(JWB.msg('not-on-list'));
-				}
+
+		if (JWB.langs.length) {
+			$.when.apply($, JWB.langs.map(url => $.getScript(url))).done(function(r) {
+				JWB.checkInit();
 			});
-		} else if (JWB.allowed === true) { // no more languages to load.
-			console.log('no langs loaded');
-			JWB.init();
+		} else { // no more languages to load.
+			console.log('no languages needed loading');
+			JWB.checkInit();
 		}
 	});
 	
@@ -221,11 +218,9 @@ window.JWB = {}; //The main global object for the script.
 			JWB.bot = true;
 			users.push("Joeytje50");
 		}
-		var allLoaded = true;
-		for (var m in JWB.messages) if (JWB.messages[m] === null) allLoaded = false;
 		if (JWB.sysop || response.query.pageids[0] === '-1' || users === false || users.includes(JWB.username) || bots.includes(JWB.username)) {
 			JWB.allowed = true;
-			if (allLoaded) JWB.init(); //init if messages have already loaded
+			JWB.checkInit(); //init if everything necessary has been loaded
 		} else {
 			if (allLoaded) {
 				//run this after messages have loaded, so the message that shows is in the user's language
@@ -579,16 +574,19 @@ JWB.api.move = function() {
 };
 JWB.api.del = function() {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
-	JWB.status(($('#deletePage').is('.undelete') ? 'un' : '') + 'delete');
+	var del_action = (!JWB.page.exists ? 'un' : '') + 'delete';
+	JWB.status(del_action);
 	var summary = $('#summary').val();
 	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
-	JWB.api.call({
-		action: (!JWB.page.exists ? 'un' : '') + 'delete',
+	var data = {
+		action: del_action,
 		title: JWB.page.name,
 		token: JWB.page.token,
 		reason: summary
-	}, function(response) {
-		JWB.log((!JWB.page.exists ? 'un' : '') + 'delete', (response['delete']||response.undelete).title);
+	};
+	if ($('#deleteTalk').prop('checked')) data[del_action + 'talk'] = true;
+	JWB.api.call(data, function(response) {
+		JWB.log(del_action, (response['delete']||response.undelete).title);
 		JWB.status('done', true);
 		JWB.next(response.undelete && response.undelete.title);
 	});
@@ -1456,10 +1454,10 @@ JWB.start = function() {
 
 JWB.updateButtons = function() {
 	if (!JWB.page.exists && $('#deletePage').is('.delete')) {
-		$('#deletePage').removeClass('delete').addClass('undelete').html('Undelete');
+		$('#deletePage').removeClass('delete').addClass('undelete').html(JWB.msg('editbutton-undelete'));
 		JWB.fn.blink('#deletePage'); //Indicate the button has changed
 	} else if (JWB.page.exists && $('#deletePage').is('.undelete')) {
-		$('#deletePage').removeClass('undelete').addClass('delete').html('Delete');
+		$('#deletePage').removeClass('undelete').addClass('delete').html(JWB.msg('editbutton-delete'));
 		JWB.fn.blink('#deletePage'); //Indicate the button has changed
 	}
 	if (!JWB.page.exists) {
@@ -1715,7 +1713,24 @@ JWB.msg = function(message) {
 };
 
 /***** Init *****/
+// Check whether or not we are ready to init JWB. If not allowed, abort and delete JWB object to deny access.
+JWB.checkInit = function() {
+	if (JWB.allowed === false) {
+		var msg = JWB.msg('not-on-list');
+		JWB = false;
+		delete JWB;
+		alert(msg);
+		return;
+	}
+	var allLoaded = true;
+	for (var m in JWB.messages) if (JWB.messages[m] === null) allLoaded = false;
+	if (JWB.allowed === true && allLoaded && Object.keys(JWB.messages).length == JWB.langs.length + 1) { // if there are two languages to load, wait for them both.
+		console.log('langs loaded');
+		JWB.init(); //init if verification has already returned true
+	}
+};
 
+// Initialise JWB
 JWB.init = function() {
 	console.log(JWB.messages.en, !!JWB.messages.en);
 	JWB.setup.load();
@@ -1943,6 +1958,10 @@ JWB.init = function() {
 			'<label>'+JWB.msg('move-new-name')+' <input type="text" id="moveTo"></label>'+
 		'</fieldset>'+
 		'<fieldset>'+
+			'<legend>'+JWB.msg('delete-header')+'</legend>'+
+			'<label><input type="checkbox" id="deleteTalk"> '+JWB.msg('delete-talk')+'</label>'+
+		'</fieldset>'+
+		'<fieldset>'+
 		'<legend>'+JWB.msg('protect-header')+'</legend>'+
 			JWB.msg('protect-edit')+
 			' <select id="editProt">'+
@@ -1970,7 +1989,7 @@ JWB.init = function() {
 			'<label>'+JWB.msg('protect-expiry')+' <input type="text" id="protectExpiry"/></label>'+
 		'</fieldset>'+
 		'<button id="movePage" disabled accesskey="m">'+JWB.msg('editbutton-move')+'</button> '+
-		'<button id="deletePage" disabled accesskey="x">'+JWB.msg('editbutton-delete')+'</button> '+
+		'<button id="deletePage" class="delete" disabled accesskey="x">'+JWB.msg('editbutton-delete')+'</button> '+
 		'<button id="protectPage" disabled accesskey="z">'+JWB.msg('editbutton-protect')+'</button> '+
 		'<button id="skipPage" disabled title="['+JWB.tooltip+'n]">'+JWB.msg('editbutton-skip')+'</button>'
 	);

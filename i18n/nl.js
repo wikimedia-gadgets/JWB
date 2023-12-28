@@ -88,8 +88,10 @@ JWB.messages.nl = {
 	'label-ignore-comment':	'Negeer onverwerkte inhoud',
 	'tip-ignore-comment':	'Negeer commentaar en tekst binnen nowiki, source, math, of pre tags bij vervangen.',
 	'label-enable-RETF':	'$1 activeren',
-	'label-RETF':			'RegEx Typo correcties',
+	'label-RETF':			'RegEx Typo-correcties',
 	'tip-refresh-RETF':		'Ververs typolijst voor nieuwe veranderingen.',
+	'skip-RETF':			'Herlaad zonder RETF',
+	'tip-skip-RETF':		'Regenereer pagina-inhoud eenmalig, zonder typocorrecties.',
 	
 	// Tab 3
 	'label-redirects':		'Doorverwijzingen:',
@@ -113,6 +115,7 @@ JWB.messages.nl = {
 	// Tab 4
 	'editbutton-move':		'Hernoem',
 	'editbutton-delete':	'Verwijder',
+	'editbutton-undelete':	'Terugplaatsen',
 	'editbutton-protect':	'Beveilig',
 	'move-header':			'Hernoemopties',
 	'move-redir-suppress':	'Doorverwijzing onderdrukken',
@@ -120,6 +123,8 @@ JWB.messages.nl = {
 	'move-talk-page':		'overleg',
 	'move-subpage':			'subpagina\'s',
 	'move-new-name':		'Nieuwe naam:',
+	'delete-header':		'Verwijderopties',
+	'delete-talk':			'(Ont)verwijder ook overlegpagina',
 	'protect-header':		'Beschermingsopties',
 	'protect-edit':			'Bewerken:',
 	'protect-move':			'Hernoemen:',

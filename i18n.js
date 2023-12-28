@@ -150,6 +150,7 @@ JWB.messages.en = {
 	// Tab 4
 	'editbutton-move':		'Move',
 	'editbutton-delete':	'Delete',
+	'editbutton-undelete':	'Undelete',
 	'editbutton-protect':	'Protect',
 	'move-header':			'Move options',
 	'move-redir-suppress':	'Suppress redirects',
@@ -157,6 +158,8 @@ JWB.messages.en = {
 	'move-talk-page':		'talk page',
 	'move-subpage':			'subpages',
 	'move-new-name':		'New pagename:',
+	'delete-header':		'Delete options',
+	'delete-talk':			'Also (un)delete talk page',
 	'protect-header':		'Protect options',
 	'protect-edit':			'Edit:',
 	'protect-move':			'Move:',
