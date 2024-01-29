@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.4.2
+ * @version 4.4.3
  * @author Joeytje50
  * </nowiki>
  */
@@ -2038,7 +2038,7 @@ JWB.init = function() {
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" id="proplinks" name="search" value="sr"> '+JWB.msg('legend-sr')+'</label></legend>'+
 			'<label title="'+JWB.msg('tip-sr')+'\n'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
-				JWB.msg('label-sr')+' <input type="text" id="srsearch" name="srsearch" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
+				JWB.msg('label-sr')+' <input type="text" id="srsearch" name="srsearch" class="fullwidth" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
 			'</label>'+
 		'</fieldset>'+
 		'<fieldset class="listSMW">'+

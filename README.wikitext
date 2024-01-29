@@ -2,7 +2,7 @@
 {|style="float:right;text-align:center;width:120px;background:#eee5ff;border:2px solid #899DEE;border-radius:2px;padding:5px;margin:5px;"
 |[[File:Text-x-source.svg|100px]]
 |-
-|[https://github.com/Joeytje50/JWB GitHub repo]
+|[https://github.com/wikimedia-gadgets/JWB GitHub repo]
 |-
 |[[/Changelog/]]
 |-
@@ -162,13 +162,13 @@ If you wish to disable RETF for a single page, you can use the button below the 
 
 ===Using regex===
 
-Aside from simple text find & replace rules, you can also define regular expression replacements. Here you have more control over what gets matched, and what doesn't. You can specify the flags you'd like to use in the box next to the ''Regular Expression'' checkmark.
+Aside from simple text find & replace rules, you can also define regular expression replacements. Here you have more control over what gets matched, and what doesn't. You can specify the flags you'd like to use in the box next to the ''Regular Expression'' checkmark. Note that, while non-regex replacements are by default global replacements, you will need to include the <code>g</code> flag to perform global replacements.
 
 In this JWB script, you can also specify the <code>_</code> (underscore) flag. That will make the expression treat all spaces and underscores equally. That can be useful when dealing with wikilinks, template transclusions, etc.
 
 To perform multiple replacements on the same page, you can use the ''More replace fields'' button, which will open up a window where you can add more rules in the same format as the format in the ''Editing'' tab. When you press {{kbd|Tab}} while having your cursor on the last replacement rule, another set of inputs will be added. Alternatively, you can press the ''Add more fields'' button.
 
-To test regular expressions (albeit without the <code>_</code> flag), you can use online IDEs such as http://regex101.com/, http://debuggex.com/, or http://regexr.com/.
+To test regular expressions (albeit without the <code>_</code> flag), you can use online IDEs such as http://regex101.com/, http://debuggex.com/, or http://regexr.com/. Please ensure the regex engine (or flavor) is set to JavaScript (or ECMAScript), to reproduce behaviour in JWB.
 
 ===Ignoring unparsed content===
 
@@ -204,7 +204,7 @@ When moving pages, the move summary used is taken from the ''Editing'' tab. You 
 
 ===Deleting===
 
-Deleting, like moving uses the summary box for its delete reason.
+Deleting, like moving, uses the summary box for its delete reason. If a page does not exist, the same button will allow for undeleting of the target page (if a previous revision existed). Deleting and undeleting both also allow for (un)deleting the accompanying talk page, by checking the checkbox to do so.
 
 ===Protecting===
 
@@ -221,7 +221,7 @@ Feel free to add this userbox in your userpage:
 {{User:Joeytje50/JWB/Userbox|nocat=y}}
 {{clear}}
 ==Contributing to JWB==
-If you would like to contribute code to JWB, please see [http://github.com/Joeytje50/JWB/ the GitHub repository]. You can create a pull request there to submit code or bug fixes to the script.
+If you would like to contribute code to JWB, please see [https://github.com/wikimedia-gadgets/JWB the GitHub repository]. You can create a pull request there to submit code or bug fixes to the script.
 
 If you would like to contribute internationalisation (i18n) messages to the script, please either submit a pull request on said GitHub repository, or post a message on [[User talk:Joeytje50/JWB.js/i18n.js]] with your of messages to be added. See also the message at the top of that talk page for more information.
 
@@ -234,3 +234,4 @@ This will show a full list of missing messages in a collapsed box at the top of 
 [[Category:AutoWikiBrowser|JWB]]
 [[Category:Wikipedia scripts|JWB]]
 [[id:Wikipedia:JavaScript Wiki Browser]]
+
