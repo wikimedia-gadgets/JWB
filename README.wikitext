@@ -133,6 +133,9 @@ Every page will automatically display the difference between the stored content,
 
 Users with the ''bot'' usergroup, that are also listed on the wiki's AutoWikiBrowser checklist under the 'bot' category, will also be able to automatically save their edits. This can be done with a throttle to prevent overloading the server. The number entered in the "every <code>[]</code> sec" field is the number of seconds ''between'' edits. This number can also contain decimals (using a <code>.</code> as [[decimal mark]]).
 
+=== Prepending and appending ===
+Unlike [[WP:AWB]], there is no separate prepend or append option. However, the functionality still exists; to prepend, simply create a replacement rule to replace <code>^</code> with the text you wish to prepend, and check the 'Regular Expression' checkbox. Keep the ''flags'' field empty. To append, simply do the same, but instead replace <code>$</code> with the text you wish to append. Also select to treat it as a Regular Expression, without any flags enabled.
+
 ==Replacements==
 
 Perhaps the most important feature of JWB is automated replacements. You can define the rules for replacing in the ''Editing'' tab. By default, all replacements are performed globally. That means that specifying that ''a'' should be replaced with ''b'', then every single letter ''a'' in the document will be replaced with ''b''. When using regular expressions, this can be disabled by removing the <code>g</code> flag.
@@ -200,7 +203,7 @@ Administrators can also perform other actions on the page. These actions cannot 
 
 ===Moving===
 
-When moving pages, the move summary used is taken from the ''Editing'' tab. You can select to suppress redirect, which prevents the move from leaving a redirect in the place of the old page's title. You can also select to move all subpages and/or the talk page.
+When moving pages, the move summary used is taken from the ''Editing'' tab. You can select to suppress redirect, which prevents the move from leaving a redirect in the place of the old page's title. You can also select to move all subpages and/or the talk page. Note that all warnings are ignored when moving pages. This means that your move action will move pages over existing pages, if there's already a page at the target page name.
 
 ===Deleting===
 
@@ -208,7 +211,7 @@ Deleting, like moving, uses the summary box for its delete reason. If a page doe
 
 ===Protecting===
 
-For protection, you can specify the protection levels for Editing, Moving and Uploading separately. When the page doesn't exist, the level defined in the ''Edit'' protection is instead applied to the ''Create'' protection. The ''Upload'' protection is only applied to pages where this is applicable (i.e. File pages). The expiry field allows input in the same way as normal time input does. Inputs like "1 hour", "5 January 2000", etc. are allowed here.
+For protection, you can specify the protection levels for Editing, Moving and Uploading separately. When the page doesn't exist, the level defined in the ''Edit'' protection is instead applied to the ''Create'' protection. The ''Upload'' protection is only applied to pages where this is applicable (i.e. File pages). The expiry field allows input in the same way as normal time input does. Inputs like "1 hour", "5 January 2000", etc. are allowed here. See [[mwi:API:Protect]] and [https://www.mediawiki.org/w/api.php?action=help&modules=main#main/datatypes API datatype help] for more information.
 
 ==Logs==
 [[File:JWB Log.png|thumb|Log]]
@@ -234,4 +237,4 @@ This will show a full list of missing messages in a collapsed box at the top of 
 [[Category:AutoWikiBrowser|JWB]]
 [[Category:Wikipedia scripts|JWB]]
 [[id:Wikipedia:JavaScript Wiki Browser]]
-
+[[ur:ویکیپیڈیا:جاوا سکرپٹ ویکی براؤزر]]

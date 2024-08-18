@@ -27,6 +27,7 @@ html, body {
 	padding: 0;
 	margin: 0;
 	background: white;
+	color: black;
 }
 body:before, body:after {
 	content: normal !important;
@@ -92,7 +93,7 @@ hr {
 	right: 0;
 }
 
-textarea {
+body.AutoWikiBrowser textarea {
 	width: 100%;
 	min-width: 100% !important; /*important to prevent inline styles from resizing to smaller sizes*/
 	height: 100%;
@@ -101,6 +102,8 @@ textarea {
 	-webkit-box-sizing: border-box;
 	-moz-box-sizing: border-box;
 	box-sizing: border-box;
+	background: white;
+	color: black;
 }
 body.AutoWikiBrowser fieldset {
 	padding: 0 5px 5px;
@@ -212,6 +215,10 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	float: right;
 	margin-top: -25px;
 }
+#replacesButton.replacesActive::after {
+	content: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAYAAAAMAQMAAAB7mV5tAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAAJcEhZcwAALiMAAC4jAXilP3YAAAAGUExURUdwTAAAAJ8qhFEAAAABdFJOUwBA5thmAAAAD0lEQVQI12MwYECHDCASABooAhHc6GaKAAAAAElFTkSuQmCC");
+	margin-left: 3px;
+}
 #refreshRETF {
 	cursor: pointer;
 }
@@ -219,6 +226,9 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	margin-left: 2em;
 	margin-top: 0;
 	visibility: hidden; /* JS overrides this when RETF is enabled */
+}
+.logActionNote {
+	font-size: smaller;
 }
 
 .tabholder {
@@ -387,7 +397,7 @@ b {
 .regexswitch {
 	font-style:italic;
 }
-.re101 {
+.infoLink {
 	font-size: 70%;
 	vertical-align: super;
 	text-decoration: none;

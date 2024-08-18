@@ -34,7 +34,7 @@ JWB.messages.nl = {
 	'button-sort':			'Sorteer',
 	'preparse':				'Gebruik pre-parse modus',
 	'tip-preparse':			'Werk door pagina\'s in de lijst om de pagina\'s weg te filteren die overgeslagen worden via de huidige skip-regels.',
-	'preparse-reset':		'reset',
+	'preparse-reset':		'Reset',
 	'tip-preparse-reset':	'Reset de #PRE-PARSE-STOP tag in de lijst met pagina\'s, om weer door de hele lijst met pagina\'s te kunnen pre-parsen.',
 	'pagelist-generate':	'Genereer',
 	'label-settings':		'Instellingen:',
@@ -62,8 +62,8 @@ JWB.messages.nl = {
 	'edit-summary':			'Samenvatting:',
 	'minor-edit':			'Kleine bewerking',
 	'tip-via-JWB':			'Voeg (via JWB script) toe aan het eind van je bewerkingssamenvatting',
-	'watch-add':			'volg nu',
-	'watch-remove':			'ontvolg nu',
+	'watch-add':			'Volg nu',
+	'watch-remove':			'Ontvolg nu',
 	'watch-nochange':		'Wijzig volglijst niet',
 	'watch-preferences':	'Volg naar ingestelde voorkeuren',
 	'watch-watch':			'Volg bewerkte pagina\'s',
@@ -134,6 +134,7 @@ JWB.messages.nl = {
 	'protect-autoconf':		'Autobevestigd',
 	'protect-sysop':		'Alleen administrators',
 	'protect-expiry':		'Verloopt:',
+	'log-action-note':		"Opm.: Voor samenvatting zie 'Bewerk'-tab.",
 
 	//Dialog boxes
 	'confirm-leave':		'Als u dit tabblad sluit verlies je alle gegevens.',

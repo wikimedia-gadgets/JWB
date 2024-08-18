@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.4.3
+ * @version 4.4.4
  * @author Joeytje50
  * </nowiki>
  */
@@ -953,6 +953,7 @@ JWB.setup.apply = function(name) {
 			}
 		}
 	}
+	JWB.listReplaces();
 	$('.useRegex, #containRegex,'+
 	  '#pagelistPopup legend input,'+
 	  '#viaJWB, #enableRETF').trigger('change'); //reset disabled inputs
@@ -1246,6 +1247,14 @@ JWB.listReplaces = function() {
 		r[3] = $this;
 		JWB.replaces.push(r);
 	});
+	if (JWB.replaces.length > 1 || (
+		JWB.replaces.length == 1 && $('.JWBtabc .replaceText').val() == '' && $('.JWBtabc .replaceWith').val() == ''
+	)) {
+		// There are replace rules in the replaces popup
+		$('#replacesButton').addClass('replacesActive');
+	} else {
+		$('#replacesButton').removeClass('replacesActive');
+	}
 };
 
 //Perform all specified find&replace actions
@@ -1742,7 +1751,7 @@ JWB.init = function() {
 		'<label style="display:block;">'+JWB.msg('label-rwith')+' <input type="text" class="replaceWith"/></label>'+
 		'<div class="regexswitch">'+
 			'<label><input type="checkbox" class="useRegex"> '+JWB.msg('label-useregex')+'</label>'+
-			'<a class="re101" href="http://regex101.com/#javascript" target="_blank">?</a>'+
+			'<a class="infoLink" href="http://regex101.com/#javascript" target="_blank" tabindex="-1">101</a>'+
 			'<label class="divisor" title="'+JWB.msg('tip-regex-flags')+'" style="display:none;">'+
 				JWB.msg('label-regex-flags')+' <input type="text" class="regexFlags" value="g"/>'+ //default: global replacement
 			'</label>'+
@@ -1986,12 +1995,13 @@ JWB.init = function() {
 				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
 			'</select> '+
 			'<br>'+
-			'<label>'+JWB.msg('protect-expiry')+' <input type="text" id="protectExpiry"/></label>'+
+			'<label>'+JWB.msg('protect-expiry')+'<a class="infoLink" href="https://www.mediawiki.org/w/api.php?action=help&modules=main#main/datatypes" target="_blank" tabindex="-1">?</a> <input type="text" id="protectExpiry"/></label>'+
 		'</fieldset>'+
 		'<button id="movePage" disabled accesskey="m">'+JWB.msg('editbutton-move')+'</button> '+
 		'<button id="deletePage" class="delete" disabled accesskey="x">'+JWB.msg('editbutton-delete')+'</button> '+
 		'<button id="protectPage" disabled accesskey="z">'+JWB.msg('editbutton-protect')+'</button> '+
-		'<button id="skipPage" disabled title="['+JWB.tooltip+'n]">'+JWB.msg('editbutton-skip')+'</button>'
+		'<button id="skipPage" disabled title="['+JWB.tooltip+'n]">'+JWB.msg('editbutton-skip')+'</button>'+
+		'<div class="logActionNote">'+JWB.msg('log-action-note')+'</div>'
 	);
 	$('.JWBtabc[data-tab="5"]').html('<table id="actionlog"><tbody></tbody></table>');
 	$('#pagelistPopup form').html(
@@ -2038,7 +2048,8 @@ JWB.init = function() {
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" id="proplinks" name="search" value="sr"> '+JWB.msg('legend-sr')+'</label></legend>'+
 			'<label title="'+JWB.msg('tip-sr')+'\n'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
-				JWB.msg('label-sr')+' <input type="text" id="srsearch" name="srsearch" class="fullwidth" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
+				JWB.msg('label-sr')+
+				' <input type="text" id="srsearch" name="srsearch" class="fullwidth" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
 			'</label>'+
 		'</fieldset>'+
 		'<fieldset class="listSMW">'+
@@ -2050,7 +2061,7 @@ JWB.init = function() {
 	if (JWB.hasSMW) {
 		$('#pagelistPopup').addClass('hasSMW');
 	}
-	$('body').addClass('AutoWikiBrowser'); //allow easier custom styling of JWB.
+	$('body').addClass('AutoWikiBrowser').addClass('notheme'); //allow easier custom styling of JWB.
 	$('[accesskey]').each(function() {
 		let lbl = this.accessKeyLabel || this.accessKey; // few browsers support accessKeyLabel, so fallback to accessKey.
 		$(this).attr('title', '['+lbl+']');
@@ -2126,6 +2137,7 @@ JWB.init = function() {
 	});
 	$('#overlay').click(function() {
 		$('#replacesPopup, #pagelistPopup, #overlay').hide();
+		JWB.listReplaces();
 		JWB.pl.done = true;
 		JWB.pl.stop();
 	});

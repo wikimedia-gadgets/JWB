@@ -46,7 +46,7 @@ if (!window.JWB || JWB === false) {
 JWB.messages.en = {
 	// General interface
 	'tab-setup':			'Setup',
-	'tab-editing':			'Editing',
+	'tab-editing':			'Edit',
 	'tab-skip':				'Skip',
 	'tab-other':			'Other',
 	'tab-log':				'Log',
@@ -69,7 +69,7 @@ JWB.messages.en = {
 	'button-sort':			'Sort',
 	'preparse':				'Use pre-parse mode',
 	'tip-preparse':			'Go through listed pages, filtering it down to just the ones that would not be skipped by the current Skip rules.',
-	'preparse-reset':		'reset',
+	'preparse-reset':		'Reset',
 	'tip-preparse-reset':	'Clear the #PRE-PARSE-STOP tag in the pagelist, to pre-parse the whole page list again',
 	'pagelist-generate':	'Generate',
 	'label-settings':		'Settings',
@@ -97,8 +97,8 @@ JWB.messages.en = {
 	'edit-summary':			'Summary:',
 	'minor-edit':			'Minor edit',
 	'tip-via-JWB':			'Add (via JWB script) to the end of your summary',
-	'watch-add':			'add now',
-	'watch-remove':			'remove now',
+	'watch-add':			'Add now',
+	'watch-remove':			'Remove now',
 	'watch-nochange':		'Don\'t modify watchlist',
 	'watch-preferences':	'Watch based on preferences',
 	'watch-watch':			'Add pages to watchlist',
@@ -169,6 +169,7 @@ JWB.messages.en = {
 	'protect-autoconf':		'Autoconfirmed',
 	'protect-sysop':		'Sysop only',
 	'protect-expiry':		'Expiry:',
+	'log-action-note':		"Note: See 'Edit' tab to change summary.",
 
 	//Dialog boxes
 	'confirm-leave':		'Closing this tab will cause you to lose all progress.',
