@@ -393,6 +393,7 @@ JWB.api.get = function(pagename) {
 		if (response.query.redirects) {
 			JWB.page.name = response.query.redirects[0].to;
 		}
+		JWB.page.path = mw.config.get('wgArticlePath').replace('$1', JWB.page.name);
 		// check for skips that can be determined before replacing
 		if (!JWB.fn.allowBots(JWB.page.content, JWB.username) || !JWB.fn.allowBots(JWB.page.content)) {
 			// skip if {{bots}} template forbids editing on this page by user OR by JWB in general
@@ -1332,7 +1333,7 @@ JWB.skipRETF = function() {
 // Edit the current page and pre-fill the newContent.
 JWB.editPage = function(newContent) {
 	$('#editBoxArea').val(newContent);
-	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.name, encodeURIComponent(JWB.page.name)));
+	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.path, encodeURIComponent(JWB.page.name)));
 	if ($('#preparse').prop('checked')) {
 		$('#articleList').val($.trim($('#articleList').val()) + '\n' + JWB.list[0]); //move current page to the bottom
 		JWB.next();

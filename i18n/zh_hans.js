@@ -17,7 +17,7 @@ JWB.messages.zh_hans = {
 	'tab-log': '日志',
 	'pagelist-caption': '在下方输入页面列表:',
 	'editbox-caption': '编辑区域',
-	'editbox-currentpage': '正在编辑: <a href="/wiki/$2" target="_blank" title="$1" accesskey="c">$1</a>',
+	'editbox-currentpage': '正在编辑: <a href="$2" target="_blank" title="$1" accesskey="c">$1</a>',
 	'no-changes-made': '没有可应用更改。按“跳过”转至列表中的下一项。',
 	'page-not-exists': '页面不存在，无法展示差异。',
 
