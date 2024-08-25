@@ -95,7 +95,6 @@ window.JWB = {}; //The main global object for the script.
 	}
 	mw.loader.load(JWB.imports['JWB.css'], 'text/css');
 	mw.loader.load('mediawiki.diff.styles');
-	new mw.Api().loadMessagesIfMissing( [ 'pagecategorieslink', 'pagecategorieslink' ] );
 
 	JWB.langs = [];
 
@@ -239,7 +238,7 @@ window.JWB = {}; //The main global object for the script.
 //Main template for API calls
 JWB.api.call = function(data, callback, onerror) {
 	data.format = 'json';
-	if (data.action !== 'query' && data.action !== 'compare' && data.action !== 'ask') {
+	if (data.action !== 'query' && data.action !== 'compare' && data.action !== 'ask' && data.action !== 'parse') {
 		data.bot = true; // mark edits as bot
 	}
 	$.ajax({
@@ -524,28 +523,21 @@ JWB.api.preview = function() {
 		title: JWB.page.name,
 		action: 'parse',
 		pst: true,
-		text: $('#editBoxArea').val()
+		text: $('#editBoxArea').val(),
+		prop: 'text|categorieshtml|modules|jsconfigvars',
+		useskin: mw.config.get('skin')
 	}, function(response) {
 		$('#resultWindow').html(response.parse.text['*']);
 		$('#resultWindow div.previewnote').remove();
-		var cglist = response.parse.categories;
-		if (cglist.length > 0) {
-			var cgtext = mw.message('pagecategories', cglist.length).text(),
-				cglink = mw.message('pagecategorieslink').text();
-			// set defaults if MediaWiki:Pagecategories(link) have not loaded correctly:
-			if (cgtext[0] == '\u29FC') cgtext = 'Categories';
-			if (cglink[0] == '\u29FC') cglink = 'Special:Categories';
-			var $footer = $('<footer/>').addClass('catlinks')
-										.append('<a href="/wiki/'+encodeURIComponent(cglink)+'" title="'+cglink+'">'+cgtext+'</a>: <ul></ul>');
-			var $ul = $footer.children('ul');
-			for (var i=0;i<cglist.length;i++) {
-				var redlink = cglist[i].missing === undefined ? '' : ' class="new"';
-				var cg = cglist[i]['*'];
-				$ul.append('<li><a href="/wiki/Category:' + encodeURIComponent(cg) + '" title="' + cg + '"' + redlink + '>' + cg + '</a></li>');
-			}
-			$footer.appendTo('#resultWindow');
+		$('#resultWindow').append(response.parse.categorieshtml['*']);
+
+		for (var entry of Object.entries(response.parse.jsconfigvars)) {
+			mw.config.set(entry[0], entry[1]);
 		}
-		JWB.status('done', true);
+		mw.loader.using(response.parse.modules.concat(response.parse.modulescripts, response.parse.modulestyles), function() {
+			mw.hook('wikipage.content').fire($('#resultWindow .mw-parser-output'));
+			JWB.status('done', true);
+		});
 	});
 };
 JWB.api.move = function() {
