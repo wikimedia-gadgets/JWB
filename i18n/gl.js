@@ -17,7 +17,7 @@ JWB.messages.gl = {
 	'tab-log':				'Rexistro',
 	'pagelist-caption':		'Indicar lista de páxinas:',
 	'editbox-caption':		'Área de edición',
-	'editbox-currentpage':	'Está a editar: <a href="$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'Está a editar: <a href="$2" target="_blank" title="$1" accesskey="c">$1</a>',
 	'no-changes-made':		'Non se fixeron cambios. Prema Saltar para pasar á seguinte páxina da lista.',
 	'page-not-exists':		'A páxina non existe, non se poden xerar as diferenzas.',
 	

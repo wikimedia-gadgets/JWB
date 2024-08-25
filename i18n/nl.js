@@ -17,7 +17,7 @@ JWB.messages.nl = {
 	'tab-log':				'Log',
 	'pagelist-caption':		'Lijst met pagina\'s:',
 	'editbox-caption':		'Bewerkingsveld',
-	'editbox-currentpage':	'Je bewerkt nu: <a href="$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'Je bewerkt nu: <a href="$2" target="_blank" title="$1" accesskey="c">$1</a>',
 	'no-changes-made':		'Geen bewerkingen gemaakt. Druk op skip om door te gaan met de volgende pagina in de lijst.',
 	'page-not-exists':		'Pagina bestaat niet. Wijzigingen kunnen niet worden opgesteld.',
 	
@@ -34,7 +34,7 @@ JWB.messages.nl = {
 	'button-sort':			'Sorteer',
 	'preparse':				'Gebruik pre-parse modus',
 	'tip-preparse':			'Werk door pagina\'s in de lijst om de pagina\'s weg te filteren die overgeslagen worden via de huidige skip-regels.',
-	'preparse-reset':		'reset',
+	'preparse-reset':		'Reset',
 	'tip-preparse-reset':	'Reset de #PRE-PARSE-STOP tag in de lijst met pagina\'s, om weer door de hele lijst met pagina\'s te kunnen pre-parsen.',
 	'pagelist-generate':	'Genereer',
 	'label-settings':		'Instellingen:',
@@ -62,8 +62,8 @@ JWB.messages.nl = {
 	'edit-summary':			'Samenvatting:',
 	'minor-edit':			'Kleine bewerking',
 	'tip-via-JWB':			'Voeg (via JWB script) toe aan het eind van je bewerkingssamenvatting',
-	'watch-add':			'volg nu',
-	'watch-remove':			'ontvolg nu',
+	'watch-add':			'Volg nu',
+	'watch-remove':			'Ontvolg nu',
 	'watch-nochange':		'Wijzig volglijst niet',
 	'watch-preferences':	'Volg naar ingestelde voorkeuren',
 	'watch-watch':			'Volg bewerkte pagina\'s',
@@ -88,8 +88,10 @@ JWB.messages.nl = {
 	'label-ignore-comment':	'Negeer onverwerkte inhoud',
 	'tip-ignore-comment':	'Negeer commentaar en tekst binnen nowiki, source, math, of pre tags bij vervangen.',
 	'label-enable-RETF':	'$1 activeren',
-	'label-RETF':			'RegEx Typo correcties',
+	'label-RETF':			'RegEx Typo-correcties',
 	'tip-refresh-RETF':		'Ververs typolijst voor nieuwe veranderingen.',
+	'skip-RETF':			'Herlaad zonder RETF',
+	'tip-skip-RETF':		'Regenereer pagina-inhoud eenmalig, zonder typocorrecties.',
 	
 	// Tab 3
 	'label-redirects':		'Doorverwijzingen:',
@@ -113,6 +115,7 @@ JWB.messages.nl = {
 	// Tab 4
 	'editbutton-move':		'Hernoem',
 	'editbutton-delete':	'Verwijder',
+	'editbutton-undelete':	'Terugplaatsen',
 	'editbutton-protect':	'Beveilig',
 	'move-header':			'Hernoemopties',
 	'move-redir-suppress':	'Doorverwijzing onderdrukken',
@@ -120,6 +123,8 @@ JWB.messages.nl = {
 	'move-talk-page':		'overleg',
 	'move-subpage':			'subpagina\'s',
 	'move-new-name':		'Nieuwe naam:',
+	'delete-header':		'Verwijderopties',
+	'delete-talk':			'(Ont)verwijder ook overlegpagina',
 	'protect-header':		'Beschermingsopties',
 	'protect-edit':			'Bewerken:',
 	'protect-move':			'Hernoemen:',
@@ -129,6 +134,7 @@ JWB.messages.nl = {
 	'protect-autoconf':		'Autobevestigd',
 	'protect-sysop':		'Alleen administrators',
 	'protect-expiry':		'Verloopt:',
+	'log-action-note':		"Opm.: Voor samenvatting zie 'Bewerk'-tab.",
 
 	//Dialog boxes
 	'confirm-leave':		'Als u dit tabblad sluit verlies je alle gegevens.',

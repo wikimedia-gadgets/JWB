@@ -2,6 +2,52 @@
 :''{{subst:#time:d F Y}}''
 -->
 == Version 4 ==
+=== 4.4.4 ===
+:''18 August 2024''
+* Add an indicator when more replacement rules are active in the popup screen
+* '''Bugfix:''' Fix issue in Firefox causing large amount of error messages being spammed to the console, slowing down the tool.
+* Made more compatible when loading JWB inside dark mode skins, which would previously turn the font color to white.
+* Small layout and styling changes: capitalisation, consistency, and clearer information tooltips.
+* Update from Github: add more acceskey shortcuts consistent with main MediaWiki edit interface.
+
+=== 4.4.3 ===
+:''29 January 2024''
+* In the page list generation popup, turn the wiki search box into a full-width box.
+
+=== 4.4.2 ===
+:''28 December 2023''
+* Fix issues with internationalisation, causing different languages not to load properly in some situations.
+* Minor code refactoring
+
+=== 4.4.1 ===
+:''27 December 2023''
+* Add a checkbox to automatically (un)delete the talk page of any page that is being deleted
+* '''Bugfix:''' Fix an issue causing the text of the undelete button not updating when a page does not exist. Now the button text will represent whether a page will be deleted or undeleted when the button is pressed.
+
+=== 4.4.0 ===
+:''11 July 2022''
+* Make the 'Setup' tab the default tab upon loading JWB, as that is the tab where you would generate page lists or select which settings to load.
+* Add another button for adding more RegEx replace fields, this one being at the bottom. The top button now inserts a field at the top, while the new button at the bottom inserts them at the bottom.
+* Include the list of categories in the page preview, just like the list of categories would be shown at the bottom of a page regularly.
+* '''Bugfix:''' Previously, an infinite-skipping warning was given when the first replacement field was empty (but others weren't), with skipping when no changes are made being enabled. Now, JWB checks all replacement boxes before throwing this error.
+* Make input boxes for generating page lists much wider for more advanced searches.
+* Make pagelist generating checkboxes more clearly clickable.
+* Minor typesetting fixes
+* Minor code cleanup
+
+=== 4.3.1 ===
+:''1 October 2021''
+* '''Bugfix:''' Fix a bug causing 'skip if not contains' to behave like 'skip if contains'; bugfix submitted by chrishanel on github.
+* Fix an alignment issue causing the 'summary' label to appear in the wrong place; issue reported by lens0021 on github
+* Include Italian i18n files, submitted by valepert.
+
+=== 4.3.0 ===
+:''31 July 2021''
+* Old XML checkpage format which was deprecated by AWB around 2018 is now also dropped from JWB, in favour of [[Wikipedia:AutoWikiBrowser/CheckPageJSON]] format.
+** Sysops opening JWB on any wiki that has an XML CheckPage (unless that page functions only as a redirect) but no CheckPageJSON page, will receive a notification that their checkpage format should be updated.
+* [[User:Joeytje50/RETF|RegEx Typo Fixing]] can now be disabled for a single edit, through a button that appears when RETF is enabled. This will reload all contents, without the RETF changes applied to it. To re-apply RETF, simply stop and re-start JWB to reapply all normal changes to the page.
+* '''Bugfix:''' Fixed i18n files not always properly loading before JWB initialised, causing the script to fall back to English strings more often than necessary.
+
 === 4.2.2 ===
 :''04 April 2021''
 * New setting is now available in the 'setup' tab to prevent diff sizes exceeding a certain amount of characters. This can be used as a sanity check, as well as being useful to avoid a [[Higgs-bugson]] that is causing pages to be partially blanked sometimes.

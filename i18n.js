@@ -46,13 +46,13 @@ if (!window.JWB || JWB === false) {
 JWB.messages.en = {
 	// General interface
 	'tab-setup':			'Setup',
-	'tab-editing':			'Editing',
+	'tab-editing':			'Edit',
 	'tab-skip':				'Skip',
 	'tab-other':			'Other',
 	'tab-log':				'Log',
 	'pagelist-caption':		'Enter list of pages:',
 	'editbox-caption':		'Editing area',
-	'editbox-currentpage':	'You are editing: <a href="$2" target="_blank" title="$1">$1</a>',
+	'editbox-currentpage':	'You are editing: <a href="$2" target="_blank" title="$1" accesskey="c">$1</a>',
 	'no-changes-made':		'No changes made. Press skip to go to the next page in the list.',
 	'page-not-exists':		'Page doesn\'t exist, diff can not be made.',
 	
@@ -69,7 +69,7 @@ JWB.messages.en = {
 	'button-sort':			'Sort',
 	'preparse':				'Use pre-parse mode',
 	'tip-preparse':			'Go through listed pages, filtering it down to just the ones that would not be skipped by the current Skip rules.',
-	'preparse-reset':		'reset',
+	'preparse-reset':		'Reset',
 	'tip-preparse-reset':	'Clear the #PRE-PARSE-STOP tag in the pagelist, to pre-parse the whole page list again',
 	'pagelist-generate':	'Generate',
 	'label-settings':		'Settings',
@@ -97,8 +97,8 @@ JWB.messages.en = {
 	'edit-summary':			'Summary:',
 	'minor-edit':			'Minor edit',
 	'tip-via-JWB':			'Add (via JWB script) to the end of your summary',
-	'watch-add':			'add now',
-	'watch-remove':			'remove now',
+	'watch-add':			'Add now',
+	'watch-remove':			'Remove now',
 	'watch-nochange':		'Don\'t modify watchlist',
 	'watch-preferences':	'Watch based on preferences',
 	'watch-watch':			'Add pages to watchlist',
@@ -125,6 +125,8 @@ JWB.messages.en = {
 	'label-enable-RETF':	'Enable $1',
 	'label-RETF':			'RegEx Typo Fixing',
 	'tip-refresh-RETF':		'Refresh the typos list for new modifications.',
+	'skip-RETF':			'Disable RETF here',
+	'tip-skip-RETF':		'Reload the page content without RegEx Typo Fixing enabled for just this page.',
 	
 	// Tab 3
 	'label-redirects':		'Redirects:',
@@ -148,6 +150,7 @@ JWB.messages.en = {
 	// Tab 4
 	'editbutton-move':		'Move',
 	'editbutton-delete':	'Delete',
+	'editbutton-undelete':	'Undelete',
 	'editbutton-protect':	'Protect',
 	'move-header':			'Move options',
 	'move-redir-suppress':	'Suppress redirects',
@@ -155,6 +158,8 @@ JWB.messages.en = {
 	'move-talk-page':		'talk page',
 	'move-subpage':			'subpages',
 	'move-new-name':		'New pagename:',
+	'delete-header':		'Delete options',
+	'delete-talk':			'Also (un)delete talk page',
 	'protect-header':		'Protect options',
 	'protect-edit':			'Edit:',
 	'protect-move':			'Move:',
@@ -164,6 +169,7 @@ JWB.messages.en = {
 	'protect-autoconf':		'Autoconfirmed',
 	'protect-sysop':		'Sysop only',
 	'protect-expiry':		'Expiry:',
+	'log-action-note':		"Note: See 'Edit' tab to change summary.",
 
 	//Dialog boxes
 	'confirm-leave':		'Closing this tab will cause you to lose all progress.',
