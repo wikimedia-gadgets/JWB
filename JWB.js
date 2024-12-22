@@ -60,7 +60,7 @@ window.JWB = {}; //The main global object for the script.
 		'RETF.js':	'//en.wikipedia.org/w/index.php?title=User:Joeytje50/RETF.js&action=raw&ctype=text/javascript',
 		'worker.js':'//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/worker.js&action=raw&ctype=text/javascript',
 	};
-	
+	JWB.allLoaded = false;
 	let objs = ['page', 'api', 'worker', 'fn', 'pl', 'messages', 'setup', 'settings', 'ns'];
 	for (let i=0;i<objs.length;i++) {
 		JWB[objs[i]] = {};
@@ -222,7 +222,7 @@ window.JWB = {}; //The main global object for the script.
 			JWB.allowed = true;
 			JWB.checkInit(); //init if everything necessary has been loaded
 		} else {
-			if (allLoaded) {
+			if (JWB.allLoaded) {
 				//run this after messages have loaded, so the message that shows is in the user's language
 				alert(JWB.msg('not-on-list'));
 			}
@@ -1727,9 +1727,9 @@ JWB.checkInit = function() {
 		alert(msg);
 		return;
 	}
-	var allLoaded = true;
-	for (var m in JWB.messages) if (JWB.messages[m] === null) allLoaded = false;
-	if (JWB.allowed === true && allLoaded && Object.keys(JWB.messages).length == JWB.langs.length + 1) { // if there are two languages to load, wait for them both.
+	JWB.allLoaded = true;
+	for (var m in JWB.messages) if (JWB.messages[m] === null) JWB.allLoaded = false;
+	if (JWB.allowed === true && JWB.allLoaded && Object.keys(JWB.messages).length == JWB.langs.length + 1) { // if there are two languages to load, wait for them both.
 		console.log('langs loaded');
 		JWB.init(); //init if verification has already returned true
 	}
