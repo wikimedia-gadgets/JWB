@@ -1637,7 +1637,7 @@ JWB.fn.uniques = function(arr) {
 // the user parameter is still kept as an optional parameter to maintain functionality as given on that template page.
 JWB.fn.allowBots = function(text, user = "JWB") {
 	var usr = user.replace(/([\(\)\*\+\?\.\-\:\!\=\/\^\$])/g, "\\$1");
-	if (!new RegExp("\\{\\{\\s*(nobots|bots[^}]*)\\s*\\}\\}", "i").test(text))
+	if (!new RegExp("\\{\\{\\s*(nobots|bots)\\s*(\\}\\}|\\|)", "i").test(text))
 		return true;
 	if (new RegExp("\\{\\{\\s*bots\\s*\\|\\s*deny\\s*=\\s*([^}]*,\\s*)*" + usr + "\\s*(?=[,\\}])[^}]*\\s*\\}\\}", "i").test(text))
 		return false;
