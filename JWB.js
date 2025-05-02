@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.4.6
+ * @version 4.5.0
  * @author Joeytje50
  * </nowiki>
  */
