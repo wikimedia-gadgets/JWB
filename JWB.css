@@ -56,7 +56,7 @@ hr {
 }
 #resultWindow * {resize: none;}
 #inputsWindow {
-	height: 360px;
+	height: 380px;
 	padding-bottom: 30px;
 	border-bottom: 1px solid #AAA;
 }
