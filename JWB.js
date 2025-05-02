@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.5.0
+ * @version 4.5.1
  * @author Joeytje50
  * </nowiki>
  */
@@ -1903,6 +1903,14 @@ JWB.init = function() {
 			'</label>'+
 			'<br>'
 		:'')+
+		'<label style="display:block">'+
+			JWB.msg('on-load')+
+			' <select id="onLoad">'+
+				'<option value="diff" selected>'+JWB.msg('on-load-diff')+'</option>'+
+				'<option value="preview">'+JWB.msg('on-load-preview')+'</option>'+
+			'</select>'+
+		'</label>'+
+		'<hr>'+
 		'<span id="startstop">'+
 			'<button id="startbutton" accesskey="a">'+JWB.msg('editbutton-start')+'</button>'+
 			'<br>'+
@@ -1915,11 +1923,6 @@ JWB.init = function() {
 		'<button class="editbutton" id="diffButton" disabled accesskey="d">'+JWB.msg('editbutton-diff')+'</button>'+
 		'<button id="replacesButton">'+JWB.msg('button-open-popup')+'</button>'+
 		findreplace+
-		JWB.msg('on-load')+
-		' <select id="onLoad">'+
-			'<option value="diff" selected>'+JWB.msg('on-load-diff')+'</option>'+
-			'<option value="preview">'+JWB.msg('on-load-preview')+'</option>'+
-		'</select>'+
 		'<hr>'+
 		'<label><input type="checkbox" id="enableRETF"> '+
 			JWB.msg('label-enable-RETF', 
