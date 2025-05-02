@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.4.4
+ * @version 4.4.6
  * @author Joeytje50
  * </nowiki>
  */
@@ -60,7 +60,7 @@ window.JWB = {}; //The main global object for the script.
 		'RETF.js':	'//en.wikipedia.org/w/index.php?title=User:Joeytje50/RETF.js&action=raw&ctype=text/javascript',
 		'worker.js':'//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/worker.js&action=raw&ctype=text/javascript',
 	};
-	
+	JWB.allLoaded = false;
 	let objs = ['page', 'api', 'worker', 'fn', 'pl', 'messages', 'setup', 'settings', 'ns'];
 	for (let i=0;i<objs.length;i++) {
 		JWB[objs[i]] = {};
@@ -142,11 +142,10 @@ window.JWB = {}; //The main global object for the script.
 
 	(new mw.Api()).get({
 		action: 'query',
-		titles: 'Project:AutoWikiBrowser/CheckPageJSON',
+		titles: 'Project:AutoWikiBrowser/CheckPageJSON|MediaWiki:Tag-JWB',
 		prop: 'info|revisions',
 		meta: 'userinfo|siteinfo',
 		rvprop: 'content',
-		rvlimit: 1,
 		uiprop: 'groups',
 		siprop: 'namespaces|usergroups|extensions',
 		indexpageids: true,
@@ -179,7 +178,9 @@ window.JWB = {}; //The main global object for the script.
 		
 		JWB.username = response.query.userinfo.name; //preventing any "hacks" that change wgUserName or mw.config.wgUserName
 		var groups = response.query.userinfo.groups;
-		var page = response.query.pages[response.query.pageids[0]];
+		var page = Object.values(response.query.pages).find(page => page.title.includes("AutoWikiBrowser/CheckPageJSON"));
+		var tagPage = Object.values(response.query.pages).find(page => page.title.includes("Tag-JWB"));
+		JWB.hasTag = (tagPage.missing === undefined);
 		var users = [];
 		var bots = [];
 		JWB.sysop = groups.indexOf('sysop') !== -1;
@@ -221,7 +222,7 @@ window.JWB = {}; //The main global object for the script.
 			JWB.allowed = true;
 			JWB.checkInit(); //init if everything necessary has been loaded
 		} else {
-			if (allLoaded) {
+			if (JWB.allLoaded) {
 				//run this after messages have loaded, so the message that shows is in the user's language
 				alert(JWB.msg('not-on-list'));
 			}
@@ -238,8 +239,9 @@ window.JWB = {}; //The main global object for the script.
 //Main template for API calls
 JWB.api.call = function(data, callback, onerror) {
 	data.format = 'json';
-	if (data.action !== 'query' && data.action !== 'compare' && data.action !== 'ask' && data.action !== 'parse') {
+	if (data.action !== 'query' && data.action !== 'compare' && data.action !== 'ask' && data.action !== 'parse' && data.action !== 'watch') {
 		data.bot = true; // mark edits as bot
+		if (JWB.hasTag) data.tags = 'JWB'; // tag with 'JWB'
 	}
 	$.ajax({
 		data: data,
@@ -393,7 +395,7 @@ JWB.api.get = function(pagename) {
 		if (response.query.redirects) {
 			JWB.page.name = response.query.redirects[0].to;
 		}
-		JWB.page.path = mw.config.get('wgArticlePath').replace('$1', JWB.page.name);
+		JWB.page.path = mw.config.get('wgArticlePath').replace('$1', encodeURIComponent(JWB.page.name));
 		// check for skips that can be determined before replacing
 		if (!JWB.fn.allowBots(JWB.page.content, JWB.username) || !JWB.fn.allowBots(JWB.page.content)) {
 			// skip if {{bots}} template forbids editing on this page by user OR by JWB in general
@@ -492,7 +494,6 @@ JWB.api.submit = function(page) {
 		title: JWB.page.name,
 		summary: summary,
 		action: 'edit',
-		//tags: 'JWB',
 		basetimestamp: JWB.page.revisions ? JWB.page.revisions[0].timestamp : '',
 		token: JWB.page.token,
 		text: newval,
@@ -1136,7 +1137,7 @@ JWB.setup.load = function() {
 };
 
 JWB.setup.moveNew = function(from, to, token) {
-	(new mw.Api()).post({
+	var data = {
 		action: 'move',
 		from: from,
 		to: to,
@@ -1146,7 +1147,9 @@ JWB.setup.moveNew = function(from, to, token) {
 		movesubpages: true, // if any
 		movetalk: true, // if any
 		ignorewarnings: true,
-	}).done(function(response) {
+	};
+	if (JWB.hasTag) data.tags = 'JWB';
+	(new mw.Api()).post(data).done(function(response) {
 		if (response.error === undefined) {
 			JWB.log('move', from, to);
 			JWB.settingspage = to.split('/')[1];
@@ -1337,7 +1340,7 @@ JWB.skipRETF = function() {
 // Edit the current page and pre-fill the newContent.
 JWB.editPage = function(newContent) {
 	$('#editBoxArea').val(newContent);
-	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.path, encodeURIComponent(JWB.page.name)));
+	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.name, JWB.page.path));
 	if ($('#preparse').prop('checked')) {
 		$('#articleList').val($.trim($('#articleList').val()) + '\n' + JWB.list[0]); //move current page to the bottom
 		JWB.next();
@@ -1645,7 +1648,7 @@ JWB.fn.uniques = function(arr) {
 // the user parameter is still kept as an optional parameter to maintain functionality as given on that template page.
 JWB.fn.allowBots = function(text, user = "JWB") {
 	var usr = user.replace(/([\(\)\*\+\?\.\-\:\!\=\/\^\$])/g, "\\$1");
-	if (!new RegExp("\\{\\{\\s*(nobots|bots[^}]*)\\s*\\}\\}", "i").test(text))
+	if (!new RegExp("\\{\\{\\s*(nobots\\s*\\}\\}|bots\\s*(?:\\}\\}|\\|))", "i").test(text))
 		return true;
 	if (new RegExp("\\{\\{\\s*bots\\s*\\|\\s*deny\\s*=\\s*([^}]*,\\s*)*" + usr + "\\s*(?=[,\\}])[^}]*\\s*\\}\\}", "i").test(text))
 		return false;
@@ -1735,9 +1738,9 @@ JWB.checkInit = function() {
 		alert(msg);
 		return;
 	}
-	var allLoaded = true;
-	for (var m in JWB.messages) if (JWB.messages[m] === null) allLoaded = false;
-	if (JWB.allowed === true && allLoaded && Object.keys(JWB.messages).length == JWB.langs.length + 1) { // if there are two languages to load, wait for them both.
+	JWB.allLoaded = true;
+	for (var m in JWB.messages) if (JWB.messages[m] === null) JWB.allLoaded = false;
+	if (JWB.allowed === true && JWB.allLoaded && Object.keys(JWB.messages).length == JWB.langs.length + 1) { // if there are two languages to load, wait for them both.
 		console.log('langs loaded');
 		JWB.init(); //init if verification has already returned true
 	}
@@ -1880,8 +1883,8 @@ JWB.init = function() {
 	);
 	$('.JWBtabc[data-tab="2"]').html(
 		'<label class="minorEdit"><input type="checkbox" id="minorEdit" accesskey="i" checked> '+JWB.msg('minor-edit')+'</label>'+
-		'<label class="editSummary viaJWB">'+JWB.msg('edit-summary')+'<br/> <input class="fullwidth" type="text" id="summary" maxlength="500" accesskey="b"></label>'+
-		' <input type="checkbox" id="viaJWB" checked title="'+JWB.msg('tip-via-JWB')+'">'+
+		'<label class="editSummary'+(JWB.hasTag?'':' viaJWB')+'">'+JWB.msg('edit-summary')+'<br/> <input class="fullwidth" type="text" id="summary" maxlength="500" accesskey="b"></label>'+
+		' <input type="checkbox" id="viaJWB"'+(JWB.hasTag?'':' checked')+' title="'+JWB.msg('tip-via-JWB')+'">'+
 		'<select id="watchPage">'+
 			'<option value="watch">'+JWB.msg('watch-watch')+'</option>'+
 			'<option value="unwatch">'+JWB.msg('watch-unwatch')+'</option>'+
