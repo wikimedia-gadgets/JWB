@@ -27,7 +27,9 @@ html, body {
 	padding: 0;
 	margin: 0;
 	background: white;
+	background: var(--background-color-base, #fff);
 	color: black;
+	color: var(--color-base, #202122);
 }
 body:before, body:after {
 	content: normal !important;
@@ -37,7 +39,7 @@ body:before, body:after {
 
 body {
 	background: none !important;
-	font: 16px "Times New Roman";
+	font: 16px sans-serif;
 	line-height: 20px;
 	margin: 0 4px;
 }
@@ -50,7 +52,8 @@ hr {
 	resize: vertical;
 	height: 300px;
 	min-height: 300px !important; /*important to prevent inline styles from resizing to smaller sizes*/
-	border: 1px solid #555;
+	border: 1px solid #c8ccd1;
+	border: 1px solid var(--border-color-subtle, #c8ccd1);
 	padding: 3px;
 	overflow: auto;
 }
@@ -58,7 +61,8 @@ hr {
 #inputsWindow {
 	height: 360px;
 	padding-bottom: 30px;
-	border-bottom: 1px solid #AAA;
+	border-bottom: 1px solid #c8ccd1;
+	border-bottom: 1px solid var(--border-color-base, #a2ab91);
 }
 
 #inputsBox {
@@ -103,12 +107,15 @@ body.AutoWikiBrowser textarea {
 	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 	background: white;
+	background: var(--background-color-base, #fff);
 	color: black;
+	color: var(--color-base, #000);
 }
 body.AutoWikiBrowser fieldset {
 	padding: 0 5px 5px;
 	line-height: inherit;
-	border: 1px solid #2F6FAB;
+	border: 1px solid #36c;
+	border: 1px solid var(--border-color-progressive--focus, #36c);
 	margin: 2px 0;
 }
 legend {
@@ -116,50 +123,38 @@ legend {
 	font-size: 100%;
 }
 button, .button {
-	background: #EEE; /* Old browsers */
-	background: -moz-linear-gradient(#EEE, #CCC, #DDD); /* FF3.6+ */
-	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #EEE), color-stop(50%, #CCC), color-stop(100%, #DDD)); /* Chrome,Safari4+ */
-	background: -webkit-linear-gradient(#EEE, #CCC, #DDD); /* Chrome10+,Safari5.1+ */
-	background: -o-linear-gradient(#EEE, #CCC, #DDD); /* Opera 11.10+ */
-	background: -ms-linear-gradient(#EEE, #CCC, #DDD); /* IE10+ */
-	background: linear-gradient(#EEE, #CCC, #DDD); /* W3C */
-	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#EEEEEE', endColorstr='#CCCCCC',GradientType=0 ); /* IE6-9 */
-	border: 1px solid #999;
+	background: #f1f4fd;
+	background: var(--background-color-progressive-subtle, #f1f4fd);
+	border: 1px solid #72777d;
+	border: 1px solid var(--border-color-interactive, #72777d);
 	border-radius: 3px;
 	padding: 0 6px;
 	margin: 2px;
 	cursor: default;
 	color: #333;
-	font: 13px/20px arial;
+	color: var(--color-base, #202122);
+	font: 13px/20px sans-serif;
 	display: inline-block;
 }
 button:hover, .button:hover {
-	background: #DDF; /* Old browsers */
-	background: -moz-linear-gradient(#EEE, #CCF, #DDF); /* FF3.6+ */
-	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #EEE), color-stop(50%, #CCF), color-stop(100%, #DDF)); /* Chrome,Safari4+ */
-	background: -webkit-linear-gradient(#EEE, #CCF, #DDF); /* Chrome10+,Safari5.1+ */
-	background: -o-linear-gradient(#EEE, #CCF, #DDF); /* Opera 11.10+ */
-	background: -ms-linear-gradient(#EEE, #CCF, #DDF); /* IE10+ */
-	background: linear-gradient(#EEE, #CCF, #DDF); /* W3C */
-	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#EEEEFF', endColorstr='#CCCCFF',GradientType=0 ); /* IE6-9 */
+	background: #dce3f9; /* Old browsers */
+	background: var(--background-color-progressive-subtle--hover, #dce3f9);
 	color: #333;
+	color: var(--color-base, #202122);
 }
 button:active, .button:active {
-	background: #CCF; /* Old browsers */
-	background: -moz-linear-gradient(#CCF, #DDF, #EEE); /* FF3.6+ */
-	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #CCF), color-stop(50%, #DDF), color-stop(100%, #EEE)); /* Chrome,Safari4+ */
-	background: -webkit-linear-gradient(#CCF, #DDF, #EEE); /* Chrome10+,Safari5.1+ */
-	background: -o-linear-gradient(#CCF, #DDF, #EEE); /* Opera 11.10+ */
-	background: -ms-linear-gradient(#CCF, #DDF, #EEE); /* IE10+ */
-	background: linear-gradient(#CCF, #DDF, #EEE); /* W3C */
-	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#CCCCFF', endColorstr='#EEEEFF',GradientType=0 ); /* IE6-9 */
+	background: #cbd6f6; /* Old browsers */
+	background: var(--background-color-progressive-subtle--active, #cbd6f6);
 	color: #333;
 }
 button[disabled], button[disabled]:hover, button[disabled]:active,
 .button.disabled, .button.disabled:hover, .button.disabled:active {
-	background: #EEE;
+	background: #dadde3;
+	background: var(--background-color-disabled, #dadde3);
 	color: #000;
-	border: 1px solid #555;
+	color: var(--color-base, #202122);
+	border: 1px solid #c8ccd1;
+	border: 1px solid var(--border-color-subtle, #c8ccd1);
 	opacity: 0.6;
 }
 .button input[type="file"] {
@@ -173,11 +168,13 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 }
 
 #status {
-	border: 1px solid #555;
-	background: white;
+	border: 1px solid #c8ccd1;
+	border: 1px solid var(--border-color-subtle, #c8ccd1);
 	padding: 0 3px;
 	position: relative;
 	z-index: 20;
+	background: #fff;
+	background: var(--background-color-base, #fff);
 }
 
 /* Interface */
@@ -185,7 +182,8 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 #tabs .JWBtabc {
 	display: none;
 	height: 100%;
-	border: 1px solid #888;
+	border: 1px solid #72777d;
+	border: 1px solid var(--border-color-interactive, #72777d);
 	padding: 3px;
 	margin-top: -1px;
 	margin-bottom: -22px;
@@ -205,7 +203,8 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 .JWBtabc input[type="text"],
 .JWBtabc input[type="number"],
 .JWBpopup input[type="text"] {
-	border: 1px solid #BBB;
+	border: 1px solid #c8ccd1;
+	border: 1px solid var(--border-color-subtle, #c8ccd1);
 	border-radius: 5px;
 	box-shadow: 1px 1px 3px;
 	padding: 2px;
@@ -252,17 +251,26 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 
 .JWBtab {
 	padding: 0 3px;
-	border: 1px solid #888;
+	border: 1px solid #72777d;
+	border: 1px solid var(--border-color-interactive, #72777d);
 	border-radius: 3px 3px 0 0;
-	background: #FFF;
+	background: #fff;
+	background: var(--background-color-base, #fff);
 	cursor: pointer;
 	line-height: 20px;
 	display: inline-block;
 }
-.JWBtab:hover {background: #DDD;}
-.JWBtab:active {background: #BBB;}
+.JWBtab:hover {
+	background: #f1f4fd;
+	background: var(--background-color-progressive-subtle, #f1f4fd);
+}
+.JWBtab:active {
+	background: #cbd6f6;
+	background: var(--background-color-progressive-subtle--active, #cbd6f6);
+}
 .JWBtab.active {
-	background: #BBE;
+	background: #cbd6f6;
+	background: var(--background-color-progressive-subtle--active, #cbd6f6);
 	border-bottom: 1px solid #BBE;
 }
 
@@ -290,7 +298,9 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	position: absolute;
 	right: 0;
 	bottom: 5px;
-	background: #CCC;
+	background: #c8ccd1;
+	background: var(--background-color-interactive--active, #c8ccd1);
+	color: inherit;
 	border-radius: 0 5px 5px 0;
 	padding-left: 3px;
 	width: 85px;
@@ -306,7 +316,8 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 .divisor {
 	margin-left: 5px;
 	padding-left: 5px;
-	border-left: 1px solid #AAA;
+	border-left: 1px solid #dadde3;
+	border-left: 1px solid var(--border-color-muted, #dadde3);
 }
 
 #limits label {
@@ -337,7 +348,8 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	margin-bottom: 25px;
 }
 #actionlog tr {
-	border: 1px #AAA solid;
+	border: 1px solid #c8ccd1;
+	border: 1px solid var(--border-color-base, #a2ab91);
 }
 #actionlog td:last-child {
 	width: 85%;
@@ -363,7 +375,8 @@ button[disabled], button[disabled]:hover, button[disabled]:active,
 	width: calc(100% - 100px);
 }
 #replacesPopup .replaces {
-	border-bottom: 2px dashed #BBB;
+	border-bottom: 2px dashed #a2ab91;
+	border-bottom: 2px dashed var(--border-color-base, #a2ab91);
 	margin-bottom: 5px;
 }
 .replaces > label, .replaces > .regexswitch {
@@ -401,7 +414,8 @@ b {
 	font-size: 70%;
 	vertical-align: super;
 	text-decoration: none;
-	border-bottom: 1px dotted #000;
+	border-bottom: 1px dotted #202122;
+	border-bottom: 1px dotted var(--border-color-interactive--active, #202122);
 	cursor: help;
 }
 
@@ -412,15 +426,10 @@ b {
 	margin: 2px;
 }
 
-#submitButton {font-weight:bold;color:#262;}
-#skipButton, #skipPage {color: #A33;}
-#previewButton {color:#33F;}
-#diffButton {color:#B62;}
-#stopbutton {color: #F00;}
-#startbutton {color: #080;}
-#deletePage {color: #F00;}
-#movePage {color: #262;}
-#protectPage {color: #00F;}
+#startbutton, #submitButton, #movePage {font-weight: bold; color: #177860; color:var(--color-success, #177860);}
+#skipButton, #stopbutton, #deletePage {color: #bf3c2c; color: var(--color-destructive, #bf3c2c);}
+#previewButton, #protectPage {color:#36c; color:var(--color-progressive, #36c)}
+#skipPage, #diffButton {color: #886425;color:var(--color-warning, #886425);}
 
 #articleList {white-space: pre;}
 #articleList[disabled]:first-line {
@@ -466,6 +475,9 @@ tr[data-line]:not(.lineheader) {cursor: pointer;}
 	width: 100%;
 	height: 100%;
 	background: black;
+	background: var(--background-color-inverted, #101418);
+	color: white;
+	color: var(--color-inverted, #fff);
 	opacity: 0.3;
 }
 
@@ -479,7 +491,9 @@ tr[data-line]:not(.lineheader) {cursor: pointer;}
 	border: 2px solid black;
 	padding: 5px;
 	overflow: auto;
-	background: #EEE;
+	background: #f8f9fa;
+	background: var(--background-color-interactive-subtle, #f8f9fa);
+	color: inherit;
 }
 
 #pagelistPopup form {
@@ -502,4 +516,28 @@ select option[value=""] {
 }
 #ns-filter select {
 	height: 100%;
+}
+
+/* GENERAL DARK MODE FIXES - DELETE ON YOUR WIKI IF VECTOR 2022 IS NOT USED */
+@media screen {
+	html.skin-theme-clientpref-night #saveAs:after,
+	html.skin-theme-clientpref-night #saveToWiki:after,
+	html.skin-theme-clientpref-night #download:after,
+	html.skin-theme-clientpref-night #deleteSetup:after,
+	html.skin-theme-clientpref-night #importLabel:after,
+	html.skin-theme-clientpref-night #updateSetups:after {
+		color-scheme: light;
+		filter: invert(1) hue-rotate(180deg);
+	}
+}
+@media screen and (prefers-color-scheme:dark) {
+	html.skin-theme-clientpref-os #saveAs:after,
+	html.skin-theme-clientpref-os #saveToWiki:after,
+	html.skin-theme-clientpref-os #download:after,
+	html.skin-theme-clientpref-os #deleteSetup:after,
+	html.skin-theme-clientpref-os #importLabel:after,
+	html.skin-theme-clientpref-os #updateSetups:after {
+		color-scheme: light;
+		filter: invert(1) hue-rotate(180deg);
+	}	
 }

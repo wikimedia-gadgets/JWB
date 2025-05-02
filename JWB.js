@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.4.4
+ * @version 4.4.6
  * @author Joeytje50
  * </nowiki>
  */
@@ -54,7 +54,7 @@ window.JWB = {}; //The main global object for the script.
 (function() {
 	// Easier way to change import location for local debugging etc.
 	JWB.imports = {
-		'JWB.css':	'//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.css&action=raw&ctype=text/css',
+		'JWB.css':	'//en.wikipedia.org/w/index.php?title=User:Matrix/JWB.css&action=raw&ctype=text/css',
 		'i18n.js':	'//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/i18n.js&action=raw&ctype=text/javascript',
 		'i18n':		{},
 		'RETF.js':	'//en.wikipedia.org/w/index.php?title=User:Joeytje50/RETF.js&action=raw&ctype=text/javascript',
@@ -393,7 +393,7 @@ JWB.api.get = function(pagename) {
 		if (response.query.redirects) {
 			JWB.page.name = response.query.redirects[0].to;
 		}
-		JWB.page.path = mw.config.get('wgArticlePath').replace('$1', JWB.page.name);
+		JWB.page.path = mw.config.get('wgArticlePath').replace('$1', encodeURIComponent(JWB.page.name));
 		// check for skips that can be determined before replacing
 		if (!JWB.fn.allowBots(JWB.page.content, JWB.username) || !JWB.fn.allowBots(JWB.page.content)) {
 			// skip if {{bots}} template forbids editing on this page by user OR by JWB in general
@@ -1337,7 +1337,7 @@ JWB.skipRETF = function() {
 // Edit the current page and pre-fill the newContent.
 JWB.editPage = function(newContent) {
 	$('#editBoxArea').val(newContent);
-	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.path, encodeURIComponent(JWB.page.name)));
+	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.name, JWB.page.path));
 	if ($('#preparse').prop('checked')) {
 		$('#articleList').val($.trim($('#articleList').val()) + '\n' + JWB.list[0]); //move current page to the bottom
 		JWB.next();
@@ -2070,7 +2070,7 @@ JWB.init = function() {
 	if (JWB.hasSMW) {
 		$('#pagelistPopup').addClass('hasSMW');
 	}
-	$('body').addClass('AutoWikiBrowser').addClass('notheme'); //allow easier custom styling of JWB.
+	$('body').addClass('AutoWikiBrowser'); //allow easier custom styling of JWB.
 	$('[accesskey]').each(function() {
 		let lbl = this.accessKeyLabel || this.accessKey; // few browsers support accessKeyLabel, so fallback to accessKey.
 		$(this).attr('title', '['+lbl+']');
