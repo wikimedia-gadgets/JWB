@@ -517,7 +517,7 @@ JWB.api.submit = function(page) {
 	JWB.status('done', true);
 	JWB.next();
 };
-JWB.api.preview = function() {
+JWB.api.preview = function(callback) {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
 	JWB.status('preview');
 	JWB.api.call({
@@ -538,6 +538,10 @@ JWB.api.preview = function() {
 		mw.loader.using(response.parse.modules.concat(response.parse.modulescripts, response.parse.modulestyles), function() {
 			mw.hook('wikipage.content').fire($('#resultWindow .mw-parser-output'));
 			JWB.status('done', true);
+
+			if (typeof(callback) === 'function') {
+				callback();
+			}
 		});
 	});
 };
@@ -1338,14 +1342,21 @@ JWB.editPage = function(newContent) {
 		$('#articleList').val($.trim($('#articleList').val()) + '\n' + JWB.list[0]); //move current page to the bottom
 		JWB.next();
 		return;
-	} else if (JWB.bot && $('#autosave').prop('checked')) {
-		JWB.api.diff(function() {
+	}
+
+	var onLoadFunctions = {
+		diff: JWB.api.diff,
+		preview: JWB.api.preview
+	};
+	var autoSaveCallback = JWB.bot && $('#autosave').prop('checked')
+		? function() {
 			//timeout will take #throttle's value * 1000, if it's a number above 0. Currently defaults to 0.
 			setTimeout(JWB.api.submit, Math.max(+$('#throttle').val() || 0, 0) * 1000, JWB.page.name);
-		});
-	} else {
-		JWB.api.diff();
-	}
+		}
+		: null;
+
+	var onLoadFunction = onLoadFunctions[$('#onLoad').val()] || onLoadFunctions.diff;
+	onLoadFunction(autoSaveCallback);
 };
 
 //Adds a line to the logs tab.
@@ -1901,6 +1912,11 @@ JWB.init = function() {
 		'<button class="editbutton" id="diffButton" disabled accesskey="d">'+JWB.msg('editbutton-diff')+'</button>'+
 		'<button id="replacesButton">'+JWB.msg('button-open-popup')+'</button>'+
 		findreplace+
+		JWB.msg('on-load')+
+		' <select id="onLoad">'+
+			'<option value="diff" selected>'+JWB.msg('on-load-diff')+'</option>'+
+			'<option value="preview">'+JWB.msg('on-load-preview')+'</option>'+
+		'</select>'+
 		'<hr>'+
 		'<label><input type="checkbox" id="enableRETF"> '+
 			JWB.msg('label-enable-RETF', 
