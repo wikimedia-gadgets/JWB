@@ -305,9 +305,9 @@ JWB.api.diff = function(callback) {
 			}
 		});
 		$('table.diff tr').each(function() { //add data-line attribute to every line, relative to the previous one. Used for click event.
-			if (!$(this).next().is('[data-line]') && !$(this).next().has('td.diff-deletedline + td.diff-empty')) {
+			if (!$(this).next().is('[data-line]') && !$(this).next().children('td.diff-deletedline + td.diff-empty').length) {
 				$(this).next().attr('data-line',parseInt($(this).data('line'))+1);
-			} else if ($(this).next().has('td.diff-deletedline + td.diff-empty')) {
+			} else if ($(this).next().children('td.diff-deletedline + td.diff-empty').length) {
 				$(this).next().attr('data-line',$(this).data('line')); //copy over current data-line for deleted lines to prevent them from messing up counting.
 			}
 		});
