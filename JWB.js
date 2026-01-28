@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.5.1
+ * @version 4.5.2
  * @author Joeytje50
  * </nowiki>
  */
@@ -42,6 +42,7 @@ window.JWBdeadman = false; // ADMINS: in case of fire, set this variable to true
 //TODO: Read Wikipedia:AutoWikiBrowser/Config for when not to apply typo fixes
 //TODO: RETF disable any \b and some other cases
 //TODO: Fix deletedrevs deprecated API
+//TODO: Handle response 429 (Too Many Requests) by rate-limiting Pre-parse mode
 
 //Cleanup / modernize:
 // .indexOf('') != -1 -> .includes()
@@ -65,8 +66,6 @@ window.JWB = {}; //The main global object for the script.
 	for (let i=0;i<objs.length;i++) {
 		JWB[objs[i]] = {};
 	}
-	JWB.summarySuffix = ' (via JWB)';
-	if (document.location.hostname == 'en.wikipedia.org') JWB.summarySuffix = ' (via [[WP:JWB]])';
 	JWB.lang = mw.config.get('wgUserLanguage').replace('-', '_');
 	JWB.contentLang = mw.config.get('wgContentLanguage').replace('-', '_');
 	JWB.index_php = mw.config.get('wgScript');
@@ -184,7 +183,7 @@ window.JWB = {}; //The main global object for the script.
 		var users = [];
 		var bots = [];
 		JWB.sysop = groups.indexOf('sysop') !== -1;
-		if (response.query.pageids[0] !== '-1') {
+		if (!('missing' in page)) {
 			var checkPageData = JSON.parse(page.revisions[0]['*']);
 			users = checkPageData.enabledusers;
 			if ("enabledbots" in checkPageData) {
@@ -266,28 +265,80 @@ JWB.api.call = function(data, callback, onerror) {
 	});
 };
 
+JWB.api.parseTitle = function(title) {
+	let split = title.split(':');
+	var name = split[1] || split[0];
+	let nsid = 0;
+	if (split[1]) { // if a namespace is given
+		for (let ns in JWB.ns) {
+			if (JWB.ns[ns]['*'] == split[0]) {
+				nsid = JWB.ns[ns].id;
+				break;
+			}
+		}
+		if (nsid === 0) name = title; // if fake namespace
+	}
+	return {nsid, name};
+};
+
+JWB.api.callWithSubpages = function(data, callback) {
+	// apprefix needs namespace separate from pagename
+	var {nsid, name: title} = JWB.api.parseTitle(data.title);
+
+	var generator = data.action === 'undelete' ? {
+		action: 'query',
+		generator: 'alldeletedrevisions',
+		gadrprefix: title + '/',
+		gadrnamespace: nsid,
+		gadrlimit: 'max',
+		gadrdir: 'newer',
+		gadrgeneratetitles: 1
+	} : {
+		action: 'query',
+		generator: 'allpages',
+		gapprefix: title + '/',
+		gapnamespace: nsid,
+		gaplimit: 'max'
+	};
+
+	JWB.api.call(generator, function(response) {
+		var titles = 'query' in response ? Object.values(response.query.pages).map(page => page.title) : [];
+		titles.unshift(data.title);
+		var results = {};
+		for (var title of titles) results[title] = null;
+		for (title of titles) {
+			const dataCopy = {...data, title};
+			JWB.api.call(dataCopy, function(response) {
+				results[dataCopy.title] = response;
+				if (!Object.values(results).includes(null)) callback(results);
+			});
+		}
+	});
+};
+
 //Get page diff, and process it for more interactivity
 JWB.api.diff = function(callback) {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
 	JWB.status('diff');
 	var editBoxInput = $('#editBoxArea').val();
-	var redirect = $('input.redirects:checked').val();
+	var redirect = $('[name="redir"]:checked').val();
 	var data = {
 		action: 'compare',
-		indexpageids: true,
 		fromtitle: JWB.page.name,
-		//toslots: 'main', // TODO: Once this gets supported more widely, convert to the non-deprecated toslots system.
-		//'totext-main': editBoxInput,
-		totext: editBoxInput,
 		topst: true,
+		toslots: 'main',
+		'totext-main': editBoxInput,
+		slots: 'main'
 	};
 	if (redirect=='follow') data.redirects = true;
 	JWB.api.call(data, function(response) {
 		var diff;
-		diff = response.compare['*'];
+		diff = response.compare.bodies.main || '';
 		if (diff === '') {
-			diff = '<h2>'+JWB.msg('no-changes-made')+'</h2>';
+			$('#resultWindow').addClass('log-skipped');
+			diff = JWB.msg('no-changes-made');
 		} else {
+			$('#resultWindow').removeAttr('class');
 			diff = '<table class="diff">'+
 				'<colgroup>'+
 					'<col class="diff-marker">'+
@@ -318,7 +369,7 @@ JWB.api.diff = function(callback) {
 	}, function(err, type) {
 		if (type == 'API' && err.error.code == 'missingtitle') {
 			// missingtitle is to be expected when editing a page that doesn't exist; just show a message and move on.
-			$('#resultWindow').html('<span style="font-weight:bold;color:red;">'+JWB.msg('page-not-exists')+'</span>');
+			$('#resultWindow').addClass('log-error').html(JWB.msg('page-not-exists'));
 			JWB.status('done', true);
 			if (typeof(callback) === 'function') {
 				callback();
@@ -346,7 +397,7 @@ JWB.api.get = function(pagename) {
 	let skipcg = $('#skipCategories').val();
 	// prepend Category: before all categories and turn CSV(,) into CSV(|).
 	skipcg = skipcg.replace(new RegExp('(^|,|\\|)('+cgns+':)?', 'gi'), '|'+cgns+':').substr(1);
-	var redirect = $('input.redirects:checked').val();
+	var redirect = $('[name="redir"]:checked').val();
 	var data = {
 		action: 'query',
 		prop: 'info|revisions|categories',
@@ -368,16 +419,14 @@ JWB.api.get = function(pagename) {
 	JWB.status('load-page');
 	JWB.api.call(data, function(response) {
 		if (response.query.userinfo.hasOwnProperty('messages')) {
-			var view = mw.config.get('wgScriptPath') + '?title=Special:MyTalk';
-			var viewNew = view + '&diff=cur';
-			JWB.status(
-				'<span style="color:red;font-weight:bold;">'+
-					JWB.msg('status-newmsg', 
-						'<a href="'+view+'" target="_blank">'+JWB.msg('status-talklink')+'</a>',
-						'<a href="'+viewNew+'" target="_blank">'+JWB.msg('status-difflink')+'</a>')+
-				'</span>', true);
 			alert(JWB.msg('new-message'));
 			JWB.stop();
+			var view = mw.config.get('wgScriptPath') + '?title=Special:MyTalk';
+			var viewNew = view + '&diff=cur';
+			JWB.status(['newmsg', 
+				'<a href="'+view+'" target="_blank">'+JWB.msg('status-talklink')+'</a>',
+				'<a href="'+viewNew+'" target="_blank">'+JWB.msg('status-difflink')+'</a>'
+			], true);
 			return;
 		}
 		JWB.page = response.query.pages[response.query.pageids[0]];
@@ -465,22 +514,25 @@ JWB.api.get = function(pagename) {
 			} else {
 				JWB.editPage(newContent);
 			}
-			JWB.updateButtons();
 		});
 	});
+};
+
+JWB.getSummary = function() {
+	var summary = $('#summary').val();
+	if (!JWB.hasTag) summary += JWB.msg(['summary-suffix', JWB.contentLang], '[[:en:w:WP:JWB|JWB]]');
+	return summary;
 };
 
 //Some functions with self-explanatory names:
 JWB.api.submit = function(page) {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
 	JWB.status('submit');
-	var summary = $('#summary').val();
-	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
 	if ((typeof page === 'string' && page !== JWB.page.name) || $('#currentpage a').html().replace(/&amp;/g, '&') !== JWB.page.name) {
 		console.log(page, JWB.page.name, $('#currentpage a').html());
 		JWB.stop();
 		alert(JWB.msg('autosave-error', JWB.msg('tab-log')));
-		$('#currentpage').html(JWB.msg('editbox-currentpage', ' ', ' '));
+		$('#currentpage').html(JWB.msg('editbox-caption')+':');
 		return;
 	}
 	var newval = $('#editBoxArea').val();
@@ -492,7 +544,7 @@ JWB.api.submit = function(page) {
 	}
 	var data = {
 		title: JWB.page.name,
-		summary: summary,
+		summary: JWB.getSummary(),
 		action: 'edit',
 		basetimestamp: JWB.page.revisions ? JWB.page.revisions[0].timestamp : '',
 		token: JWB.page.token,
@@ -529,7 +581,7 @@ JWB.api.preview = function(callback) {
 		prop: 'text|categorieshtml|modules|jsconfigvars',
 		useskin: mw.config.get('skin')
 	}, function(response) {
-		$('#resultWindow').html(response.parse.text['*']);
+		$('#resultWindow').removeAttr('class').html(response.parse.text['*']);
 		$('#resultWindow div.previewnote').remove();
 		$('#resultWindow').append(response.parse.categorieshtml['*']);
 
@@ -550,18 +602,16 @@ JWB.api.move = function() {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
 	JWB.status('move');
 	var topage = $('#moveTo').val().replace(/\$x/gi, JWB.page.pagevar);
-	var summary = $('#summary').val();
-	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
 	var data = {
 		action: 'move',
 		from: JWB.page.name,
 		to: topage,
 		token: JWB.page.token,
-		reason: summary,
+		reason: JWB.getSummary(),
 		ignorewarnings: 'yes'
 	};
-	if ($('#moveTalk').prop('checked')) data.movetalk = true;
-	if ($('#moveSubpage').prop('checked')) data.movesubpages = true;
+	if ($('#acttalk').prop('checked')) data.movetalk = true;
+	if ($('#actsubpage').prop('checked')) data.movesubpages = true;
 	if ($('#suppressRedir').prop('checked')) data.noredirect = true;
 	JWB.api.call(data, function(response) {
 		JWB.log('move', response.move.from, response.move.to);
@@ -574,26 +624,25 @@ JWB.api.del = function() {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
 	var del_action = (!JWB.page.exists ? 'un' : '') + 'delete';
 	JWB.status(del_action);
-	var summary = $('#summary').val();
-	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
+	function callback(response) {
+		JWB.log(del_action, (response['delete']||response.undelete).title);
+		JWB.status('done', true);
+		JWB.next(response.undelete && response.undelete.title);
+	}
 	var data = {
 		action: del_action,
 		title: JWB.page.name,
 		token: JWB.page.token,
-		reason: summary
+		reason: JWB.getSummary()
 	};
-	if ($('#deleteTalk').prop('checked')) data[del_action + 'talk'] = true;
-	JWB.api.call(data, function(response) {
-		JWB.log(del_action, (response['delete']||response.undelete).title);
-		JWB.status('done', true);
-		JWB.next(response.undelete && response.undelete.title);
-	});
+	if ($('#acttalk').prop('checked')) data[del_action + 'talk'] = true;
+	if ($('#actsubpage').prop('checked')) JWB.api.callWithSubpages(data, res => callback(res[data.title]));
+	else JWB.api.call(data, callback);
 };
 JWB.api.protect = function() {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
 	JWB.status('protect');
-	var summary = $('#summary').val();
-	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
+	var summary = JWB.getSummary();
 	var editprot = $('#editProt').val();
 	var moveprot = $('#moveProt').val() || editprot;
 	var uploadprot = $('#uploadProt').val() || editprot;
@@ -602,14 +651,7 @@ JWB.api.protect = function() {
 		protstring = 'create='+editprot;
 	if (JWB.page.protections.includes('upload'))
 		protstring += '|upload='+uploadprot;
-	JWB.api.call({
-		action: 'protect',
-		title: JWB.page.name,
-		token: JWB.page.token,
-		reason: summary,
-		expiry: $('#protectExpiry').val()!==''?$('#protectExpiry').val():'infinite',
-		protections: protstring,
-	}, function(response) {
+	function callback(response) {
 		var protactions = '';
 		var prots = response.protect.protections;
 		for (var i=0;i<prots.length;i++) {
@@ -627,7 +669,24 @@ JWB.api.protect = function() {
 		JWB.log('protect', response.protect.title, protactions);
 		JWB.status('done', false);
 		JWB.next(response.protect.title);
-	});
+	}
+	var data = {
+		action: 'protect',
+		title: JWB.page.name,
+		token: JWB.page.token,
+		reason: summary,
+		expiry: $('#protectExpiry').val()!==''?$('#protectExpiry').val():'infinite',
+		protections: protstring,
+	};
+	var {nsid, name} = JWB.api.parseTitle(data.title), talk;
+	if ($('#acttalk').prop('checked') && nsid % 2 === 0) talk = JWB.ns[nsid + 1]['*'] + ':' + name;
+	if ($('#actsubpage').prop('checked')) {
+		if (talk) JWB.api.callWithSubpages({...data, title: talk}, () => {});
+		JWB.api.callWithSubpages(data, res => callback(res[data.title]));
+	} else {
+		if (talk) JWB.api.call({...data, title: talk}, () => {});
+		JWB.api.call(data, callback);
+	}
 };
 
 JWB.api.watch = function() {
@@ -639,9 +698,10 @@ JWB.api.watch = function() {
 	};
 	if (JWB.page.watched) data.unwatch = true;
 	JWB.api.call(data, function(response) {
-		JWB.status('<span style="color:green;">'+
-			JWB.msg('status-watch-'+(JWB.page.watched ? 'removed' : 'added'), "'"+JWB.page.name+"'")+
-		'</span>', true);
+		JWB.status([
+			'watch-'+(JWB.page.watched ? 'removed' : 'added'),
+			"'"+JWB.page.name+"'"
+		], true);
 		JWB.page.watched = !JWB.page.watched;
 		$('#watchNow').html( JWB.msg('watch-' + (JWB.page.watched ? 'remove' : 'add')) );
 	});
@@ -655,9 +715,8 @@ JWB.pl.done = true;
 JWB.pl.stop = function() {
 	if (JWB.pl.done) {
 		JWB.pl.iterations = 0;
-		$('#pagelistPopup [disabled]:not(fieldset [disabled]), #pagelistPopup legend input, #pagelistPopup button').prop('disabled', false);
-		$('#pagelistPopup legend input').trigger('change');
-		$('#pagelistPopup button img').remove();
+		$('#pagelistPopup legend input, #pagelistPopup [disabled]:not(fieldset):not(fieldset:has(legend input:not(:checked)) [disabled])').prop('disabled', false);
+		$('#pagelistPopup .spinner').remove();
 	}
 };
 
@@ -667,7 +726,7 @@ JWB.pl.getNSpaces = function() {
 };
 
 JWB.pl.getList = function(abbrs, lists, data) {
-	$('#pagelistPopup button, #pagelistPopup input, #pagelistPopup select, #pagelistPopup button').prop('disabled', true);
+	$('#pagelistPopup button, #pagelistPopup input, #pagelistPopup select').prop('disabled', true);
 	JWB.pl.iterations++;
 	if (data.ask !== undefined) {
 		JWB.pl.SMW(data.ask); // execute SMW call in parallel
@@ -812,7 +871,7 @@ JWB.pl.SMW = function(query) {
 //JWB.pl.getList(['wr'], ['watchlistraw'], {}) for watchlists
 JWB.pl.generate = function() {
 	var $fields = $('#pagelistPopup fieldset').not('[disabled]');
-	$('#pagelistPopup').find('button[type="submit"]').append('<img src="//upload.wikimedia.org/wikipedia/commons/d/de/Ajax-loader.gif" width="15" height="15" alt="'+JWB.msg('status-alt')+'"/>');
+	$('#pagelistPopup').append('<div class="spinner"></div>');
 	var abbrs = [],
 		lists = [],
 		data = {'continue': ''};
@@ -856,17 +915,8 @@ JWB.pl.generate = function() {
 				if (this.id == 'pssearch' && this.name == 'apprefix') {
 					// apprefix needs namespace separate from pagename
 					name = this.name;
-					let split = this.value.split(':');
-					val = split[1] || split[0];
-					let nsid = 0;
-					if (split[1]) { // if a namespace is given
-						for (let ns in JWB.ns) {
-							if (JWB.ns[ns]['*'] == split[0]) {
-								nsid = JWB.ns[ns].id;
-								break;
-							}
-						}
-					}
+					var {nsid, name: value} = JWB.api.parseTitle(this.value);
+					val = value;
 					data.apnamespace = nsid;
 				} else {
 					name = this.name;
@@ -905,13 +955,13 @@ JWB.setup.save = function(name) {
 	});
 	self.replaces = [];
 	$('.replaces').each(function() {
-		if ($(this).find('.replaceText').val() || $(this).find('.replaceWith').val()) {
+		if ($(this).find('[name="replaceText"]').val() || $(this).find('[name="replaceWith"]').val()) {
 			self.replaces.push({
-				replaceText: $(this).find('.replaceText').val(),
-				replaceWith: $(this).find('.replaceWith').val(),
-				useRegex: $(this).find('.useRegex').prop('checked'),
-				regexFlags: $(this).find('.regexFlags').val(),
-				ignoreNowiki: $(this).find('.ignoreNowiki').prop('checked')
+				replaceText: $(this).find('[name="replaceText"]').val(),
+				replaceWith: $(this).find('[name="replaceWith"]').val(),
+				useRegex: $(this).find('[name="useRegex"]').prop('checked'),
+				regexFlags: $(this).find('[name="regexFlags"]').val(),
+				ignoreNowiki: $(this).find('[name="ignoreNowiki"]').prop('checked')
 			});
 		}
 	});
@@ -931,7 +981,7 @@ JWB.setup.apply = function(name) {
 	$('#loadSettings').val(name);
 	$('.replaces + .replaces').remove(); //reset find&replace inputs
 	$('.replaces input[type="text"]').val('');
-	$('.useRegex').each(function() {this.checked = false;});
+	$('[name="useRegex"]').each(function() {this.checked = false;});
 	$('#pagelistPopup legend input').trigger('change'); //fix checked state of pagelist generating inputs
 	for (var a in self.string) {
 		$('#'+a).val(self.string[a]);
@@ -945,16 +995,13 @@ JWB.setup.apply = function(name) {
 		cur = self.replaces[c];
 		for (var d in cur) {
 			if (cur[d] === true || cur[d] === false) {
-				$('.replaces').eq(c).find('.'+d).prop('checked', cur[d]);
+				$('.replaces').eq(c).find('[name="'+d+'"]').prop('checked', cur[d]);
 			} else {
-				$('.replaces').eq(c).find('.'+d).val(cur[d]);
+				$('.replaces').eq(c).find('[name="'+d+'"]').val(cur[d]);
 			}
 		}
 	}
-	JWB.listReplaces();
-	$('.useRegex, #containRegex,'+
-	  '#pagelistPopup legend input,'+
-	  '#viaJWB, #enableRETF').trigger('change'); //reset disabled inputs
+	$('[name="useRegex"], #containRegex, #pagelistPopup legend input, #enableRETF').trigger('change'); //reset disabled inputs
 };
 
 JWB.setup.getObj = function() {
@@ -1000,16 +1047,10 @@ JWB.setup.download = function() {
 	JWB.setup.save(name);
 	JWB.status('setup-dload');
 	var url = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(JWB.setup.getObj())));
-	var elem = $('#download-anchor')[0];
-	if (HTMLAnchorElement.prototype.hasOwnProperty('download')) { //use download attribute when possible, for its ability to specify a filename
-		elem.href = url;
-		elem.click();
-		setTimeout(function() {elem.removeAttribute('href');}, 2000);
-	} else { //fallback to iframes for browsers with no support for download="" attributes
-		elem = $('#download-iframe')[0];
-		elem.src = url.replace('application/json', 'application/octet-stream');
-		setTimeout(function() {elem.removeAttribute('src');}, 2000);
-	}
+	var elem = document.createElement('a');
+	elem.href = url;
+	elem.download = 'JWB-settings.json';
+	elem.click();
 	JWB.status('done', true);
 };
 
@@ -1017,8 +1058,7 @@ JWB.setup.import = function(e) {
 	e.preventDefault();
 	file = (e.dataTransfer||this).files[0];
 	if ($(this).is('#import')) { //reset input
-		this.outerHTML = this.outerHTML;
-		$('#import').change(JWB.setup.import);
+		this.value = null;
 	}
 	if (!window.hasOwnProperty('FileReader')) {
 		alert(JWB.msg('old-browser'));
@@ -1071,8 +1111,6 @@ JWB.setup.load = function() {
 		indexpageids: true
 	}, function(response) {
 		if (JWB === false) return; //user is not allowed to use JWB
-		var firstrun = !JWB.setup.initialised;
-		JWB.setup.initialised = true;
 		var edittoken = response.query.tokens.csrftoken;
 
 		// determine correct page to get settings from
@@ -1101,6 +1139,7 @@ JWB.setup.load = function() {
 					// old page exists but new page doesn't; move the page to the new location.
 					JWB.setup.moveNew(oldtitle, newtitle, edittoken);
 					JWB.settingspage = 'JWB-settings.json';
+					$('#updateSetups').attr('title', JWB.msg('tip-update-setup', JWB.settingspage));
 					return;
 				}
 			} else {
@@ -1108,6 +1147,7 @@ JWB.setup.load = function() {
 				page = newpage;
 				exists = (page.missing === undefined);
 				JWB.settingspage = 'JWB-settings.json';
+				$('#updateSetups').attr('title', JWB.msg('tip-update-setup', JWB.settingspage));
 			}
 		} else {
 			page = pages[ids[0]];
@@ -1115,20 +1155,20 @@ JWB.setup.load = function() {
 		}
 		if (!exists) {
 			// settings page does not exist; don't load anything
-			if (JWB.allowed && firstrun) JWB.setup.save('default'); //this runs when this callback returns after the init has loaded.
+			JWB.status('done', true);
 			return;
 		}
 		var data = page.revisions[0]['*'].split('{{#JWB-SAFESUBST:#').join('{{subst:');
 		if (!data) {
 			// settings page is empty; don't load anything.
-			if (JWB.allowed && firstrun) JWB.setup.save('default'); //this runs when this callback returns after the init has loaded.
+			JWB.status('done', true);
 			return;
 		}
 		try {
 			data = JSON.parse(data);
 		} catch(e) {
 			alert(JWB.msg('json-err', e.message, JWB.msg('json-err-page', JWB.settingspage)) || 'JSON error:\n'+e.message);
-			JWB.setup.save('default');
+			JWB.status('done', true);
 			return;
 		}
 		JWB.setup.extend(data);
@@ -1153,6 +1193,7 @@ JWB.setup.moveNew = function(from, to, token) {
 		if (response.error === undefined) {
 			JWB.log('move', from, to);
 			JWB.settingspage = to.split('/')[1];
+			$('#updateSetups').attr('title', JWB.msg('tip-update-setup', JWB.settingspage));
 			alert(JWB.msg('moved-settings', from, to, JWB.msg('tab-log')));
 			JWB.setup.load(); // load settings from newly moved page.
 		}
@@ -1161,9 +1202,6 @@ JWB.setup.moveNew = function(from, to, token) {
 
 JWB.setup.extend = function(obj) {
 	$.extend(JWB.settings, obj);
-	if (!JWB.settings.hasOwnProperty('default')) {
-		JWB.setup.save('default');
-	}
 	for (var i in JWB.settings) {
 		if ($('#loadSettings').find('option[value="'+i+'"]').length) continue;
 		$('#loadSettings').append('<option value="'+i+'">'+i+'</option>');
@@ -1198,10 +1236,10 @@ JWB.setup.undelete = function() {
 
 //Show status message status-`action`, or status-`action[0]` with arguments `action[1:]`
 JWB.status = function(action, done) {
-	if (JWB.bot && $('#autosave').prop('checked') && !JWB.isStopped) {
-		$('#summary, .editbutton, #movePage, #deletePage, #protectPage, #skipPage').prop('disabled', true); //Disable summary when auto-saving
-	} else {
-		$('#summary, .editbutton, #movePage, #deletePage, #protectPage, #skipPage').prop('disabled', !done); //Disable box when not done (so busy loading). re-enable when done loading.
+	//Disable action buttons when not done (i.e. loading). re-enable when done loading.
+	if ((!JWB.bot || !$('#autosave').prop('checked')) && !JWB.isStopped) {
+		$('#edit-actions-container button:not(#startbutton):not(#stopbutton), .JWBtabc[data-tab="4"] button').prop('disabled', !done);
+		if (done) JWB.updateButtons();
 	}
 	var status;
 	if (action instanceof Array) {
@@ -1211,9 +1249,10 @@ JWB.status = function(action, done) {
 		status = JWB.msg('status-'+action);
 	}
 	if (status === false) return;
+	status = JWB.msg('status', status);
 	if (status) {
 		if (!done) { //spinner if not done
-			status += ' <img src="//upload.wikimedia.org/wikipedia/commons/d/de/Ajax-loader.gif" width="15" height="15" alt="'+JWB.msg('status-alt')+'"/>';
+			status += ' <div class="spinner"></div>';
 		}
 	} else {
 		status = action;
@@ -1232,31 +1271,6 @@ JWB.pageCount = function() {
 	$('#totPages').html(count);
 };
 
-//Generate list of replaces to be performed
-JWB.listReplaces = function() {
-	JWB.replaces = [];
-	$('.replaces').each(function() {
-		var $this = $(this);
-		var r = [];
-		r[0] = $this.find('.replaceText').val()
-					.replace(/\$x/gi, JWB.page.pagevar) // fill in pagevar
-					.replace(/\\{2}/g, '\\').replace(/\\n/g,'\n'); // handle \n -> newline;
-		r[1] = $this.find('.replaceWith').val();
-		if (r[0].length == 0 && r[1].length == 0) return; // don't bother replacing 2 empty strings.
-		r[2] = $this.find('.regexFlags').val();
-		r[3] = $this;
-		JWB.replaces.push(r);
-	});
-	if (JWB.replaces.length > 1 || (
-		JWB.replaces.length == 1 && $('.JWBtabc .replaceText').val() == '' && $('.JWBtabc .replaceWith').val() == ''
-	)) {
-		// There are replace rules in the replaces popup
-		$('#replacesButton').addClass('replacesActive');
-	} else {
-		$('#replacesButton').removeClass('replacesActive');
-	}
-};
-
 //Perform all specified find&replace actions
 JWB.replace = function(input, callback) {
 	JWB.status('replacing');
@@ -1268,19 +1282,24 @@ JWB.replace = function(input, callback) {
 	JWB.pageCount();
  	var varOffset = JWB.list[0].indexOf('|') !== -1 ? JWB.list[0].indexOf('|') + 1 : 0;
  	JWB.page.pagevar = JWB.list[0].substr(varOffset);
-	$.each(JWB.replaces, function(i, r) {
-		var replaceText = r[0], replaceWith = r[1], regexFlags = r[2];
-		var $this = r[3];
-		var useRegex = replaceText.length == 0 || $this.find('.useRegex').prop('checked');
-		var replace = replaceText || '$'; // empty string => append (replace /$/ with text)
+	$('.replaces').each(function() {
+		var $this = $(this);
+		//apply replaces where \n and \\ work in both regular text and regex mode.
+		var rText = $this.find('[name="replaceText"]').val()
+						 .replace(/\$x/gi, JWB.page.pagevar) // fill in pagevar
+						 .replace(/\\{2}/g, '\\').replace(/\\n/g,'\n'); // handle \n -> newline;
+		var rWith = $this.find('[name="replaceWith"]').val()
+						 .replace(/\$x/gi, JWB.page.pagevar) // fill in pagevar
+						 .replace(/\\{2}/g, '\\').replace(/\\n/g,'\n'); // handle \n -> newline;
+		if (rText.length == 0 && rWith.length == 0) return; // don't bother replacing 2 empty strings.
+		var regexFlags = $this.find('[name="regexFlags"]').val();
+		var useRegex = rText.length == 0 || $this.find('[name="useRegex"]').prop('checked');
+		var replace = rText || '$'; // empty string => append (replace /$/ with text)
 		if (useRegex && regexFlags.indexOf('_') !== -1) {
 			replace = replace.replace(/[ _]/g, '[ _]'); //replaces any of [Space OR underscore] with a match for spaces or underscores.
 			replace = replace.replace(/(\[[^\]]*)\[ _\]/g, '$1 _'); //in case a [ _] was placed inside another [] match, remove the [].
 			regexFlags = regexFlags.replace('_', '');
 		}
-		//apply replaces where \n and \\ work in both regular text and regex mode.
-		var rWith = replaceWith.replace(/\$x/gi, JWB.page.pagevar).replace(/\\{2}/g, '\\').replace(/\\n/g,'\n');
-		if (rWith.length === 0 && replace === '$') return;
 		try {
 			let replaceDone = function(result, err) {
 				console.log('done replacing', result, err);
@@ -1299,7 +1318,7 @@ JWB.replace = function(input, callback) {
 					}
 				}
 			};
-			if ($this.find('.ignoreNowiki').prop('checked')) {
+			if ($this.find('[name="ignoreNowiki"]').prop('checked')) {
 				if (!useRegex) {
 					replace = replace.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
 					regexFlags = 'g';
@@ -1332,7 +1351,6 @@ JWB.skipRETF = function() {
 	$('#enableRETF').prop('checked', false);
 	JWB.replace(JWB.page.content, function(newContent) {
 		JWB.editPage(newContent);
-		JWB.updateButtons();
 		$('#enableRETF').prop('checked', true);
 	});
 };
@@ -1348,6 +1366,7 @@ JWB.editPage = function(newContent) {
 	}
 
 	var onLoadFunctions = {
+		nothing: callback => callback ? callback() : null,
 		diff: JWB.api.diff,
 		preview: JWB.api.preview
 	};
@@ -1373,33 +1392,35 @@ JWB.log = function(action, page, info) {
 				action = 'null-edit';
 				actionStat = 'nullEdits';
 			} else {
-				extraInfo = ' (<a target="_blank" href="'+JWB.index_php+'?title='+pagee+'&diff='+info+'">diff</a>)';
+				extraInfo = '(<a target="_blank" href="'+JWB.index_php+'?title='+pagee+'&diff='+info+'">diff</a>)';
 				actionStat = 'pagesSaved';
 			}
 			break;
 		case 'nobots':
 			action = 'bot-skip';
-			extraInfo = ' (<a target="_blank" href="https://en.wikipedia.org/wiki/Template:Bots">{{bots}}</a>)';
+			extraInfo = '(<a target="_blank" href="https://en.wikipedia.org/wiki/Template:Bots">{{bots}}</a>)';
 			// no break;
 		case 'skip':
 			actionStat = 'pagesSkipped';
 			break;
 		case 'move':
-			extraInfo = ' to <a target="_blank" href="/wiki/'+encodeURIComponent(info)+'" title="'+info+'">'+info+'</a>';
+			extraInfo = 'to <a target="_blank" href="/wiki/'+encodeURIComponent(info)+'" title="'+info+'">'+info+'</a>';
 			break;
 		case 'protect':
 			extraInfo = info;
 			break;
 	}
+	if (extraInfo) extraInfo = '<span>' + extraInfo + '</span>';
 	actionStat = '#' + (actionStat || 'otherActions');
 	$(actionStat).html(+$(actionStat).html() + 1);
 	$('#actionlog tbody')
 		.append('<tr>'+
 			'<td>'+(JWB.fn.pad0(d.getHours())+':'+JWB.fn.pad0(d.getMinutes())+':'+JWB.fn.pad0(d.getSeconds()))+'</td>'+
-			'<th>'+action+'</th>'+
+			'<td>'+action+'</td>'+
 			'<td><a target="_blank" href="/wiki/'+pagee+'" title="'+page+'">'+page+'</a>'+ extraInfo +'</td>'+
-		'</tr>')
-		.parents('.JWBtabc').scrollTop($('#actionlog tbody').parents('.JWBtabc')[0].scrollHeight);
+		'</tr>');
+	// @todo: Fix automatic scroll-to-bottom in log table not working.
+	// .parents('.JWBtabc').scrollTop($('#actionlog-container').parents('.JWBtabc')[0].scrollHeight);
 };
 
 //Move to the next page in the list
@@ -1417,37 +1438,35 @@ JWB.next = function(nextPage) {
 	JWB.api.get(JWB.list[0].split('|')[0]);
 };
 
+JWB.toggleButtons = function() {
+	$('textarea, input, select, button:not(.JWBtab)').prop('disabled', (_, value) => !value);
+	// edit and actions options were enabled (not in autosave mode)
+	if (!JWB.bot || !$('#autosave').prop('checked')) {
+		$('#minorEdit, #summary, #refreshRETF, .JWBtabc[data-tab="4"] input, .JWBtabc[data-tab="4"] select').prop('disabled', false);
+	} else {
+		$('#watchNow, .skipbutton, #submitButton, #previewButton, #diffButton, .JWBtabc[data-tab="4"] button').prop('disabled', true);
+	}
+};
+
 //Stop everything, reset inputs and editor
 JWB.stop = function() {
 	console.trace('stopped');
-	$('#stopbutton,'+
-	  '.editbutton,'+
-	  '#watchNow,'+
-	  '.JWBtabc[data-tab="2"] .editbutton,'+
-	  '#watchNow'+
-	  '.JWBtabc[data-tab="4"] button,'+
-	  '#skipRETF').prop('disabled', true);
-	$('#startbutton, #articleList,'+
-	  '.JWBtabc[data-tab="1"] button,'+
-	  '#replacesPopup button,'+
-	  '#replacesPopup input,'+
-	  '.JWBtabc input, select').prop('disabled', false);
-	$('#resultWindow').html('');
+	JWB.status('done', true);
+	if (!JWB.isStopped) JWB.toggleButtons();
+	$('#resultWindow').removeAttr('class').html('');
 	$('#editBoxArea').val('');
-	$('#currentpage').html(JWB.msg('editbox-currentpage', ' ', ' '));
+	$('#currentpage').html(JWB.msg('editbox-caption')+':');
 	JWB.pl.done = true;
 	JWB.pl.stop();
-	JWB.status('done', true);
 	JWB.isStopped = true;
 };
 
 //Start AutoWikiBrowsing
 JWB.start = function() {
 	JWB.pageCount();
-	JWB.listReplaces(); // generate list of replacements to make
 	if (JWB.list.length === 0 || (JWB.list.length === 1 && !JWB.list[0])) {
 		alert(JWB.msg('no-pages-listed'));
-	} else if ($('#skipNoChange').prop('checked') && JWB.replaces.length === 0 && !$('#enableRETF').prop('checked')) {
+	} else if ($('#skipNoChange').prop('checked') && !Array.from($('.replaces [name="replaceText"]')).some(x => x.value) && !$('#enableRETF').prop('checked')) {
 		alert(JWB.msg('infinite-skip-notice'));
 	} else {
 		JWB.isStopped = false;
@@ -1458,17 +1477,13 @@ JWB.start = function() {
 		} else {
 			$('#preparse-reset').click();
 		}
-		$('#stopbutton, .editbutton, #watchNow, .JWBtabc[data-tab="2"] button, .JWBtabc[data-tab="4"] button, #skipRETF').prop('disabled', false);
-		$('#startbutton, #articleList, .JWBtabc[data-tab="1"] button, #replacesPopup button, #replacesPopup input, .JWBtabc input, select').prop('disabled', true);
-		if (!JWB.bot || !$('#autosave').prop('checked')) {
-			// keep summary / watchlist options enabled when not in autosave mode
-			$('#minorEdit, #summary, #viaJWB, #watchPage').prop('disabled', false);
-		}
+		JWB.toggleButtons();
 		JWB.api.get(JWB.list[0].split('|')[0]);
 	}
 };
 
 JWB.updateButtons = function() {
+	if (!JWB.page) return;
 	if (!JWB.page.exists && $('#deletePage').is('.delete')) {
 		$('#deletePage').removeClass('delete').addClass('undelete').html(JWB.msg('editbutton-undelete'));
 		JWB.fn.blink('#deletePage'); //Indicate the button has changed
@@ -1476,10 +1491,8 @@ JWB.updateButtons = function() {
 		$('#deletePage').removeClass('undelete').addClass('delete').html(JWB.msg('editbutton-delete'));
 		JWB.fn.blink('#deletePage'); //Indicate the button has changed
 	}
-	if (!JWB.page.exists) {
-		$('#movePage').prop('disabled', true);
-	} else {
-		$('#movePage').prop('disabled', false);
+	if (!JWB.bot || !$('#autosave').prop('checked')) {
+		$('#movePage').prop('disabled', !JWB.page.exists);
 	}
 	$('#watchNow').html( JWB.msg('watch-' + (JWB.page.watched ? 'remove' : 'add')) );
 };
@@ -1749,81 +1762,102 @@ JWB.checkInit = function() {
 // Initialise JWB
 JWB.init = function() {
 	console.log(JWB.messages.en, !!JWB.messages.en);
-	JWB.setup.load();
 	JWB.worker.init();
 	JWB.fn.clearAllTimeouts();
 
-	var findreplace = '<div class="replaces">'+
-		'<label style="display:block;">'+JWB.msg('label-replace')+' <input type="text" class="replaceText"/></label>'+
-		'<label style="display:block;">'+JWB.msg('label-rwith')+' <input type="text" class="replaceWith"/></label>'+
-		'<div class="regexswitch">'+
-			'<label><input type="checkbox" class="useRegex"> '+JWB.msg('label-useregex')+'</label>'+
-			'<a class="infoLink" href="http://regex101.com/#javascript" target="_blank" tabindex="-1">101</a>'+
-			'<label class="divisor" title="'+JWB.msg('tip-regex-flags')+'" style="display:none;">'+
-				JWB.msg('label-regex-flags')+' <input type="text" class="regexFlags" value="g"/>'+ //default: global replacement
-			'</label>'+
-			'<br/>'+
-		'</div>'+
-		'<label title="'+JWB.msg('tip-ignore-comment')+'">'+
-			'<input type="checkbox" class="ignoreNowiki"> '+JWB.msg('label-ignore-comment')+
-		'</label>'+
-	'</div>';
+	var findreplace = () => {
+		var id = Math.random().toString(36).slice(2) + '-';
+		return '<div class="replaces">'+
+			'<div>'+
+				'<label for="'+id+'replaceText">'+JWB.msg('label-replace')+'</label>'+
+				'<input type="text" name="replaceText" id="'+id+'replaceText"/>'+
+			'</div>'+
+			'<div>'+
+				'<label for="'+id+'replaceWith">'+JWB.msg('label-rwith')+'</label>'+
+				'<input type="text" name="replaceWith" id="'+id+'replaceWith"/>'+
+			'</div>'+
+			'<div class="switch">'+
+				'<div>'+
+					'<input type="checkbox" name="useRegex" id="'+id+'useRegex">'+
+					'<label for="'+id+'useRegex">'+
+						JWB.msg('label-useregex')+
+						'<a class="infoLink" href="http://regex101.com/#javascript" target="_blank" tabindex="-1">101</a>'+
+					'</label>'+
+				'</div>'+
+				'<div title="'+JWB.msg('tip-regex-flags')+'">'+
+					'<label for="'+id+'regexFlags">'+JWB.msg('label-regex-flags')+'</label>'+
+					'<input type="text" name="regexFlags" id="'+id+'regexFlags" value="g"/>'+ //default: global replacement
+				'</div>'+
+			'</div>'+
+			'<div title="'+JWB.msg('tip-ignore-comment')+'">'+
+				'<input type="checkbox" name="ignoreNowiki" id="'+id+'ignoreNowiki">'+
+				'<label for="'+id+'ignoreNowiki">'+JWB.msg('label-ignore-comment')+'</label>'+
+			'</div>'+
+		'</div>';
+	};
 	
-	var NSList = '<select multiple name="namespace" id="namespacelist">';
+	var NSList = '';
+	var count = 0;
 	for (var i in JWB.ns) {
 		if (parseInt(i) < 0) continue; //No Special: or Media: in the list
+		count++;
 		NSList += '<option value="'+JWB.ns[i].id+'" selected>'+(JWB.ns[i]['*'] || '('+JWB.msg('namespace-main')+')')+'</option>';
 	}
-	NSList += '</select>';
+	NSList = '<select multiple name="namespace" id="namespacelist" + size="' + count + '">' + NSList + '</select>';
 	
 	/***** Interface *****/
 	
 	document.title = 'AutoWikiBrowser Script'+(document.title.split('-')[1] ? ' -'+document.title.split('-')[1] : '');
 	$('body').html(
-		'<article id="resultWindow"></article>'+
+		'<div class="AWB-container">'+
 		'<main id="inputsWindow">'+
 			'<div id="inputsBox">'+
-				'<aside id="articleBox">'+
-					'<b>'+JWB.msg('pagelist-caption')+'</b>'+
-					'<textarea id="articleList"></textarea>'+
-				'</aside>'+
 				'<section id="tabs">'+
 					'<nav class="tabholder">'+
-						'<span class="JWBtab active" data-tab="1">'+JWB.msg('tab-setup')+'</span> '+
-						'<span class="JWBtab" data-tab="2">'+JWB.msg('tab-editing')+'</span> '+
-						'<span class="JWBtab" data-tab="3">'+JWB.msg('tab-skip')+'</span> '+
-						(JWB.sysop?'<span class="JWBtab" data-tab="4">'+JWB.msg('tab-other')+'</span> ':'')+
-						' <span class="JWBtab log" data-tab="5">'+JWB.msg('tab-log')+'</span> '+
+						'<button class="JWBtab active" data-tab="1">'+JWB.msg('tab-setup')+'</button>'+
+						'<button class="JWBtab" data-tab="2">'+JWB.msg('tab-editing')+'</button>'+
+						'<button class="JWBtab" data-tab="3">'+JWB.msg('tab-skip')+'</button>'+
+						'<button class="JWBtab" data-tab="4">'+JWB.msg('tab-other')+'</button>'+
+						'<button class="JWBtab" data-tab="5">'+JWB.msg('tab-log')+'</button>'+
 					'</nav>'+
 					'<section class="JWBtabc active" data-tab="1"></section>'+
 					'<section class="JWBtabc" data-tab="2"></section>'+
 					'<section class="JWBtabc" data-tab="3"></section>'+
-					(JWB.sysop?'<section class="JWBtabc" data-tab="4"></section>':'')+
-					'<section class="JWBtabc log" data-tab="5"></section>'+
-					'<footer id="status">done</footer>'+
+					'<section class="JWBtabc" data-tab="4"></section>'+
+					'<section class="JWBtabc" data-tab="5"></section>'+
 				'</section>'+
-				'<aside id="editBox">'+
-					'<b>'+JWB.msg('editbox-caption')+' - <span id="currentpage">'+JWB.msg('editbox-currentpage', ' ', ' ')+'</span></b>'+
-					'<textarea id="editBoxArea" accesskey=","></textarea>'+
-				'</aside>'+
+				'<footer id="status">'+JWB.msg('status', JWB.msg('status-done'))+'</footer>'+
+				'<div id="articleBox">'+
+					'<label for="articleList">'+JWB.msg('pagelist-caption')+'</label>'+
+					'<textarea id="articleList"></textarea>'+
+				'</div>'+
+				'<div id="editBox">'+
+					'<label for="editBoxArea" id="currentpage">'+JWB.msg('editbox-caption')+'</label>'+
+					'<textarea id="editBoxArea" accesskey="," disabled></textarea>'+
+				'</div>'+
 			'</div>'+
 		'</main>'+
-		'<footer id="stats">'+
-			JWB.msg('stat-pages')+' <span id="totPages">0</span>;&emsp;'+
-			JWB.msg('stat-save')+' <span id="pagesSaved">0</span>;&emsp;'+
-			JWB.msg('stat-null')+' <span id="nullEdits">0</span>;&emsp;'+
-			JWB.msg('stat-skip')+' <span id="pagesSkipped">0</span>;&emsp;'+
-			JWB.msg('stat-other')+' <span id="otherActions">0</span>;&emsp;'+
-		'</footer>'+
-		'<div id="overlay" style="display:none;"></div>'+
-		'<section class="JWBpopup" id="replacesPopup" style="display:none;">'+
+		'<div>'+
+			'<label for="resultWindow">'+JWB.msg('resultbox-caption')+'</label>'+
+			'<article id="resultWindow"></article>'+
+		'</div>'+
+		'<dl id="stats">'+
+			'<div><dt>'+JWB.msg('stat-pages')+'</dt><dd id="totPages">0</dd></div>'+
+			'<div><dt>'+JWB.msg('stat-save')+'</dt><dd id="pagesSaved">0</dd></div>'+
+			'<div><dt>'+JWB.msg('stat-null')+'</dt><dd id="nullEdits">0</dd></div>'+
+			'<div><dt>'+JWB.msg('stat-skip')+'</dt><dd id="pagesSkipped">0</dd></div>'+
+			'<div><dt>'+JWB.msg('stat-other')+'</dt><dd id="otherActions">0</dd></div>'+
+		'</dl>'+
+		'<dialog id="replacesPopup" popover>'+
+			// @todo: add sticky header, place these buttons and add a close button too.
 			'<button class="moreReplaces" data-insert="after">'+JWB.msg('button-more-fields')+'</button>'+
-			'<br>'+findreplace+
+			findreplace()+
 			'<button class="moreReplaces" data-insert="before">'+JWB.msg('button-more-fields')+'</button>'+
-		'</section>'+
-		'<section class="JWBpopup" id="pagelistPopup" style="display:none;">'+
+		'</dialog>'+
+		'<dialog id="pagelistPopup" popover>'+
 			'<form action="#" id="pl-form"></form>'+
-		'</section>'
+		'</dialog>'+
+		'</div>'
 	);
 	
 	$('.JWBtabc[data-tab="1"]').html(
@@ -1831,251 +1865,424 @@ JWB.init = function() {
 			'<legend>'+JWB.msg('label-pagelist')+'</legend>'+
 			'<button id="removeDupes">'+JWB.msg('button-remove-dupes')+'</button> '+
 			'<button id="sortArticles">'+JWB.msg('button-sort')+'</button>'+
-			'<br>'+
-			'<label title="'+JWB.msg('tip-preparse')+'">'+
-				'<input type="checkbox" id="preparse"> '+JWB.msg('preparse')+
-			'</label>'+
-			'<span class="divisor"></span>'+
 			'<button id="preparse-reset" title="'+JWB.msg('tip-preparse-reset')+'">'+JWB.msg('preparse-reset')+'</button>'+
-			'<br>'+
-			'<button id="pagelistButton">'+JWB.msg('pagelist-generate')+'</button>'+
+			'<button popovertarget="pagelistPopup">'+JWB.msg('pagelist-generate')+'</button>'+
+			'<div title="'+JWB.msg('tip-preparse')+'">'+
+				'<input type="checkbox" id="preparse">'+
+				'<label for="preparse">'+JWB.msg('preparse')+'</label>'+
+			'</div>'+
 		'</fieldset>'+
 		'<fieldset id="settings">'+
 			'<legend>'+JWB.msg('label-settings')+'</legend>'+
-			'<button id="saveAs" title="'+JWB.msg('tip-store-setup')+'">'+JWB.msg('store-setup')+'</button>'+
-			'<br>'+
-			'<label>'+
-				JWB.msg('load-settings') + ' '+
+			'<div>'+
+				'<label for="loadSettings">'+JWB.msg('load-settings')+'</label>'+
 				'<select id="loadSettings">'+
 					'<option value="default" selected>default</option>'+
 					'<option value="_blank">'+JWB.msg('blank-setup')+'</option>'+
 				'</select>'+
-			'</label>'+
-			'<span class="divisor"></span>'+
-			'<button id="deleteSetup" title="'+JWB.msg('tip-delete-setup')+'">'+JWB.msg('delete-setup')+'</button>'+
-			'<hr>'+
-			'<button id="saveToWiki">'+JWB.msg('save-setup')+'</button>'+
-			'<span class="divisor"></span>'+
-			'<button id="download">'+JWB.msg('download-setup')+'</button>'+
-			'<hr>'+
-			'<label class="button" id="importLabel" title="'+JWB.msg('tip-import-setup')+'">'+
-				'<input type="file" id="import" accept=".json">'+
-				JWB.msg('import-setup')+
-			'</label>'+
-			'<span class="divisor"></span>'+
-			'<button id="updateSetups" title="'+JWB.msg('tip-update-setup', JWB.settingspage)+'">'+JWB.msg('update-setup')+'</button>'+
-			'<div id="downloads">'+
-				'<a download="JWB-settings.json" target="_blank" id="download-anchor"></a>'+
-				'<iframe id="download-iframe"></iframe>'+
 			'</div>'+
+			'<button id="saveAs" title="'+JWB.msg('tip-store-setup')+'">'+JWB.msg('store-setup')+'</button>'+
+			'<button id="deleteSetup" title="'+JWB.msg('tip-delete-setup')+'">'+JWB.msg('delete-setup')+'</button>'+
+			'<button id="saveToWiki">'+JWB.msg('save-setup')+'</button>'+
+			'<button id="download">'+JWB.msg('download-setup')+'</button>'+
+			'<input type="file" id="import" accept=".json">'+
+			'<button id="importLabel" title="'+JWB.msg('tip-import-setup')+'">'+JWB.msg('import-setup')+'</button>'+
+			'<button id="updateSetups" title="'+JWB.msg('tip-update-setup', JWB.settingspage)+'">'+JWB.msg('update-setup')+'</button>'+
 		'</fieldset>'+
 		'<fieldset id="limits">'+
 			'<legend>'+JWB.msg('label-limits')+'</legend>'+
-			'<label class="timelimit-label" title="'+JWB.msg('tip-time-limit')+'">'+
-				JWB.msg('time-limit')+
-				'<input type="number" id="timelimit" value="3000" min="0">'+
-			'</label>'+
-			'<label title="'+JWB.msg('tip-diff-size-limit')+'">'+
-				JWB.msg('diff-size-limit')+
-				'<input type="number" id="sizelimit" value="0" min="0">'+
-			'</label>'+
+			'<div title="'+JWB.msg('tip-time-limit')+'">'+
+				'<label for="timelimit">'+JWB.msg('time-limit')+'</label>'+
+				'<input type="number" id="timelimit" value="3000" step="1000" min="0"/>'+
+			'</div>'+
+			'<div title="'+JWB.msg('tip-diff-size-limit')+'">'+
+				'<label for="sizelimit">'+JWB.msg('diff-size-limit')+'</label>'+
+				'<input type="number" id="sizelimit" value="0" step="1000" min="0"/>'+
+			'</div>'+
 		'</fieldset>'
 	);
 	$('.JWBtabc[data-tab="2"]').html(
-		'<label class="minorEdit"><input type="checkbox" id="minorEdit" accesskey="i" checked> '+JWB.msg('minor-edit')+'</label>'+
-		'<label class="editSummary'+(JWB.hasTag?'':' viaJWB')+'">'+JWB.msg('edit-summary')+'<br/> <input class="fullwidth" type="text" id="summary" maxlength="500" accesskey="b"></label>'+
-		' <input type="checkbox" id="viaJWB"'+(JWB.hasTag?'':' checked')+' title="'+JWB.msg('tip-via-JWB')+'">'+
-		'<select id="watchPage">'+
-			'<option value="watch">'+JWB.msg('watch-watch')+'</option>'+
-			'<option value="unwatch">'+JWB.msg('watch-unwatch')+'</option>'+
-			'<option value="nochange" selected>'+JWB.msg('watch-nochange')+'</option>'+
-			'<option value="preferences">'+JWB.msg('watch-preferences')+'</option>'+
-		'</select>'+
-		'<span class="divisor"></span>'+
-		'<button id="watchNow" disabled accesskey="w">'+
-			JWB.msg('watch-add')+
-		'</button>'+
-		'<br>'+
-		(JWB.bot?
-			'<label><input type="checkbox" id="autosave"> '+JWB.msg('auto-save')+'</label>'+
-			'<label title="'+JWB.msg('tip-save-interval')+'" class="divisor">'+
-				JWB.msg('save-interval', '<input type="number" min="0" value="0" style="width:50px" id="throttle" disabled>')+
-			'</label>'+
-			'<br>'
-		:'')+
-		'<label style="display:block">'+
-			JWB.msg('on-load')+
-			' <select id="onLoad">'+
-				'<option value="diff" selected>'+JWB.msg('on-load-diff')+'</option>'+
-				'<option value="preview">'+JWB.msg('on-load-preview')+'</option>'+
-			'</select>'+
-		'</label>'+
-		'<hr>'+
-		'<span id="startstop">'+
-			'<button id="startbutton" accesskey="a">'+JWB.msg('editbutton-start')+'</button>'+
-			'<br>'+
-			'<button id="stopbutton" disabled accesskey="q">'+JWB.msg('editbutton-stop')+'</button> '+
-		'</span>'+
-		'<button class="editbutton" id="skipButton" disabled accesskey="n">'+JWB.msg('editbutton-skip')+'</button>'+
-		'<button class="editbutton" id="submitButton" disabled accesskey="s">'+JWB.msg('editbutton-save')+'</button>'+
-		'<br>'+
-		'<button class="editbutton" id="previewButton" disabled accesskey="p">'+JWB.msg('editbutton-preview')+'</button>'+
-		'<button class="editbutton" id="diffButton" disabled accesskey="d">'+JWB.msg('editbutton-diff')+'</button>'+
-		'<button id="replacesButton">'+JWB.msg('button-open-popup')+'</button>'+
-		findreplace+
-		'<hr>'+
-		'<label><input type="checkbox" id="enableRETF"> '+
-			JWB.msg('label-enable-RETF', 
-				'<a href="/wiki/Project:AutoWikiBrowser/Typos" target="_blank">'+
-					JWB.msg('label-RETF')+
-				'</a>')+
-		'</label>'+
-		' <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Gnome-view-refresh.svg/20px-Gnome-view-refresh.svg.png"'+
-		'id="refreshRETF" title="'+JWB.msg('tip-refresh-RETF')+'">'+
-		'<br/>'+
-		'<button id="skipRETF" title="'+JWB.msg('tip-skip-RETF')+'" disabled>'+JWB.msg('skip-RETF')+'</button>'
-	);
-	$('.JWBtabc[data-tab="3"]').html(
-		'<fieldset>'+
-			'<legend>'+JWB.msg('label-redirects')+'</legend>'+
-			'<label title="'+JWB.msg('tip-redirects-follow')+'">'+
-				'<input type="radio" class="redirects" value="follow" name="redir" id="redir-follow"> '+JWB.msg('redirects-follow')+' '+
-			'</label>'+
-			'<label title="'+JWB.msg('tip-redirects-skip')+'">'+
-				 '<input type="radio" class="redirects" value="skip" name="redir" id="redir-skip"> '+JWB.msg('redirects-skip')+' '+
-			'</label>'+
-			'<label title="'+JWB.msg('tip-redirects-edit')+'">'+
-				'<input type="radio" class="redirects" value="edit" name="redir" id="redir-edit" checked> '+JWB.msg('redirects-edit')+''+
-			'</label>'+
-		'</fieldset>'+
-		'<fieldset>'+
-			'<legend>'+JWB.msg('label-skip-when')+'</legend>'+
-			'<label><input type="checkbox" id="skipNoChange"> '+JWB.msg('skip-no-change')+'</label>'+
-			'<br>'+
-			'<label><input type="radio" id="exists-yes" name="exists" value="yes"> '+JWB.msg('skip-exists-yes')+'</label> '+
-			'<label><input type="radio" id="exists-no" name="exists" value="no" checked> '+JWB.msg('skip-exists-no')+'</label> '+
-			'<label><input type="radio" id="exists-neither" name="exists" value="neither"> '+JWB.msg('skip-exists-neither')+'</label>'+
-			(JWB.sysop?'<br><label><input type="checkbox" id="skipAfterAction" checked> '+JWB.msg('skip-after-action')+'</label>':'')+
-			'<hr/>'+
-		'<label>'+JWB.msg('skip-contains')+' <input class="fullwidth" type="text" id="skipContains"></label>'+
-		'<label>'+JWB.msg('skip-not-contains')+' <input class="fullwidth" type="text" id="skipNotContains"></label>'+
-		'<div class="regexswitch">'+
-			'<label><input type="checkbox" id="containRegex"> '+JWB.msg('label-useregex')+'</label>'+
-			'<a class="re101" href="http://regex101.com/#javascript" target="_blank">?</a>'+
-			'<label class="divisor" title="'+JWB.msg('tip-regex-flags')+'" style="display:none;">'+
-				JWB.msg('label-regex-flags')+' <input type="text" id="containFlags"/>'+
-			'</label>'+
+		'<fieldset id="edit-settings-container">'+
+		'<legend>'+JWB.msg('label-edit-settings')+'</legend>'+
+		'<div>'+
+			'<input type="checkbox" id="minorEdit" accesskey="i" checked>'+
+			'<label for="minorEdit">'+JWB.msg('minor-edit')+'</label>'+
 		'</div>'+
-		'<hr/>'+
-		'<label title="'+JWB.msg('skip-cg-prefix')+'">'+JWB.msg('skip-category')+' <input class="fullwidth" type="text" id="skipCategories"></label>'+
+		'<div>'+
+			'<label for="summary">'+JWB.msg('edit-summary')+'</label>'+
+			'<div>'+
+				'<input type="text" id="summary" maxlength="500" accesskey="b">'+
+				(!JWB.hasTag?
+					'<span id="suffix" title="'+JWB.msg('tip-via-JWB')+'">'+
+						JWB.msg('summary-suffix', '<a href="/wiki/:en:w:WP:JWB" target="_blank" title=":en:w:WP:JWB">JWB</a>')+
+					'</span>'
+				:'')+
+			'</div>'+
+		'</div>'+
+		'<div id="watch-container">'+
+			'<select id="watchPage">'+
+				'<option value="watch">'+JWB.msg('watch-watch')+'</option>'+
+				'<option value="unwatch">'+JWB.msg('watch-unwatch')+'</option>'+
+				'<option value="nochange" selected>'+JWB.msg('watch-nochange')+'</option>'+
+				'<option value="preferences">'+JWB.msg('watch-preferences')+'</option>'+
+			'</select>'+
+			'<div><button id="watchNow" disabled accesskey="w">'+JWB.msg('watch-add')+'</button></div>'+
+		'</div>'+
+		(JWB.bot?
+			'<div class="switch">'+
+				'<div>'+
+					'<input type="checkbox" id="autosave">'+
+					'<label for="autosave">'+JWB.msg('auto-save')+'</label>'+
+				'</div>'+
+				'<div title="'+JWB.msg('tip-save-interval')+'">'+
+					'<label for="throttle">'+JWB.msg('save-interval-label')+'</label>'+
+					'<input type="number" value="2" step="1" min="0" id="throttle" aria-describedby="unit">'+
+					'<span id="unit">'+JWB.msg('save-interval-unit')+'</span>'+
+				'</div>'+
+			'</div>'
+		:'')+
+		'</fieldset>'+
+		'<fieldset id="find-replace-container">'+
+			'<legend>'+JWB.msg('label-find-replace')+'</legend>'+
+			'<button popovertarget="replacesPopup">'+JWB.msg('button-open-popup')+'</button>'+
+			findreplace()+
+		(window.RETF?
+			'<div>'+
+				'<input type="checkbox" id="enableRETF">'+
+				'<label for="enableRETF">'+JWB.msg('label-enable-RETF', '<a href="/wiki/Project:AutoWikiBrowser/Typos" id="regex-link" target="_blank">'+JWB.msg('label-RETF')+'</a>')+'</label>'+
+			'</div>'+
+			'<div id="RETF-container" style="display:none">'+
+				'<button id="refreshRETF" title="'+JWB.msg('tip-refresh-RETF')+'">'+JWB.msg('label-refresh-RETF')+'</button>'+
+				'<button id="skipRETF" title="'+JWB.msg('tip-skip-RETF')+'" disabled>'+JWB.msg('skip-RETF')+'</button>'+
+			'</div>'
+		:'')+
+		'</fieldset>'+
+		'<fieldset id="edit-actions-container">'+
+			'<legend>'+JWB.msg('label-edit-actions')+'</legend>'+
+			'<div>'+
+				'<label for="onLoad">'+JWB.msg('on-load')+'</label>'+
+				'<select id="onLoad">'+
+					'<option value="nothing">'+JWB.msg('on-load-nothing')+'</option>'+
+					'<option value="diff" selected>'+JWB.msg('on-load-diff')+'</option>'+
+					'<option value="preview">'+JWB.msg('on-load-preview')+'</option>'+
+				'</select>'+
+			'</div>'+
+			'<button id="startbutton" accesskey="a">'+JWB.msg('editbutton-start')+'</button>'+
+			'<button id="stopbutton" disabled accesskey="q">'+JWB.msg('editbutton-stop')+'</button>'+
+			'<button class="skipbutton" disabled accesskey="n">'+JWB.msg('editbutton-skip')+'</button>'+
+			'<button id="submitButton" disabled accesskey="s">'+JWB.msg('editbutton-save')+'</button>'+
+			'<button id="previewButton" disabled accesskey="p">'+JWB.msg('editbutton-preview')+'</button>'+
+			'<button id="diffButton" disabled accesskey="d">'+JWB.msg('editbutton-diff')+'</button>'+
 		'</fieldset>'
 	);
-	if (JWB.sysop) $('.JWBtabc[data-tab="4"]').html(
+	$('.JWBtabc[data-tab="3"]').html(
+		'<fieldset id="redirects-container">'+
+			'<legend>'+JWB.msg('label-redirects')+'</legend>'+
+			'<div title="'+JWB.msg('tip-redirects-follow')+'">'+
+				'<input type="radio" value="follow" name="redir" id="redir-follow">'+
+				'<label for="redir-follow">'+JWB.msg('redirects-follow')+'</label>'+
+			'</div>'+
+			'<div title="'+JWB.msg('tip-redirects-skip')+'">'+
+				'<input type="radio" value="skip" name="redir" id="redir-skip">'+
+                '<label for="redir-skip">'+JWB.msg('redirects-skip')+'</label>'+
+			'</div>'+
+			'<div title="'+JWB.msg('tip-redirects-edit')+'">'+
+				'<input type="radio" value="edit" name="redir" id="redir-edit" checked>'+
+				'<label for="redir-edit">'+JWB.msg('redirects-edit')+'</label>'+
+			'</div>'+
+		'</fieldset>'+
 		'<fieldset>'+
+			'<legend id="skip-when-legend">'+JWB.msg('label-skip-when')+'</legend>'+
+			'<div>'+
+				'<input type="radio" id="exists-yes" name="exists" value="yes">'+
+				'<label for="exists-yes">'+JWB.msg('skip-exists-yes')+'</label>'+
+			'</div>'+
+			'<div>'+
+				'<input type="radio" id="exists-no" name="exists" value="no" checked>'+
+				'<label for="exists-no">'+JWB.msg('skip-exists-no')+'</label>'+
+			'</div>'+
+			'<div>'+
+				'<input type="radio" id="exists-neither" name="exists" value="neither">'+
+				'<label for="exists-neither">'+JWB.msg('skip-exists-neither')+'</label>'+
+			'</div>'+
+			'<div role="group" aria-labelledby="skip-when-legend">'+
+				'<div>'+
+					'<input type="checkbox" id="skipNoChange">'+
+					'<label for="skipNoChange">'+JWB.msg('skip-no-change')+'</label>'+
+				'</div>'+
+				'<div>'+
+					'<input type="checkbox" id="skipAfterAction" checked>'+
+					'<label for="skipAfterAction">'+JWB.msg('skip-after-action')+'</label>'+
+				'</div>'+
+			'</div>'+
+		'</fieldset>'+
+		'<fieldset id="skip-container">'+
+			'<legend id="skip-container-legend">'+JWB.msg('label-skip-checks')+'</legend>'+
+			'<div role="group" aria-labelledby="skip-container-legend">'+
+				'<div>'+
+					'<label for="skipContains">'+JWB.msg('skip-contains')+'</label>'+
+					'<input type="text" id="skipContains">'+
+				'</div>'+
+				'<div>'+
+					'<label for="skipNotContains">'+JWB.msg('skip-not-contains')+'</label>'+
+					'<input type="text" id="skipNotContains">'+
+				'</div>'+
+			'</div>'+
+			'<div class="switch">'+
+				'<div>'+
+					'<input type="checkbox" id="containRegex">'+
+					'<label for="containRegex">'+
+						JWB.msg('label-useregex')+
+						'<a class="infoLink" href="http://regex101.com/#javascript" target="_blank" tabindex="-1">101</a>'+
+					'</label>'+
+				'</div>'+
+				'<div title="'+JWB.msg('tip-regex-flags')+'">'+
+					'<label for="containFlags">'+JWB.msg('label-regex-flags')+'</label>'+
+					'<input type="text" id="containFlags" value="g"/>'+ //default: global replacement
+				'</div>'+
+			'</div>'+
+			'<div title="'+JWB.msg('skip-cg-prefix')+'">'+
+				'<label for="skipCategories">'+JWB.msg('skip-category')+'</label>'+
+				'<input type="text" id="skipCategories">'+
+			'</div>'+
+		'</fieldset>'
+	);
+	$('.JWBtabc[data-tab="4"]').html(
+		'<fieldset id="move-options-container">'+
 			'<legend>'+JWB.msg('move-header')+'</legend>'+
-			'<label><input type="checkbox" id="suppressRedir"> '+JWB.msg('move-redir-suppress')+'</label>'+
-			'<br>'+
-			JWB.msg('move-also')+' '+
-			'<label><input type="checkbox" id="movetalk"> '+JWB.msg('move-talk-page')+'</label> '+
-			'<label><input type="checkbox" id="movesubpage"> '+JWB.msg('move-subpage')+'</label>'+
-			'<br>'+
-			'<label>'+JWB.msg('move-new-name')+' <input type="text" id="moveTo"></label>'+
+			'<div>'+
+				'<input type="checkbox" id="suppressRedir">'+
+				'<label for="suppressRedir">'+JWB.msg('move-redir-suppress')+'</label>'+
+			'</div>'+
+			'<div>'+
+				'<label for="moveTo">'+JWB.msg('move-new-name')+'</label>'+
+				'<input type="text" id="moveTo">'+
+			'</div>'+
 		'</fieldset>'+
-		'<fieldset>'+
-			'<legend>'+JWB.msg('delete-header')+'</legend>'+
-			'<label><input type="checkbox" id="deleteTalk"> '+JWB.msg('delete-talk')+'</label>'+
-		'</fieldset>'+
-		'<fieldset>'+
-		'<legend>'+JWB.msg('protect-header')+'</legend>'+
-			JWB.msg('protect-edit')+
-			' <select id="editProt">'+
-				'<option value="all" selected>'+JWB.msg('protect-none')+'</option>'+
-				'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
-				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
-			'</select> '+
-			'<br>'+
-			JWB.msg('protect-move')+
-			' <select id="moveProt">'+
-				'<option value="" selected>('+JWB.msg('protect-like-edit')+')</option>'+
-				'<option value="all">'+JWB.msg('protect-none')+'</option>'+
-				'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
-				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
-			'</select> '+
-			'<br>'+
-			JWB.msg('protect-upload')+
-			' <select id="uploadProt">'+
-				'<option value="" selected>('+JWB.msg('protect-like-edit')+')</option>'+
-				'<option value="all">'+JWB.msg('protect-none')+'</option>'+
-				'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
-				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
-			'</select> '+
-			'<br>'+
-			'<label>'+JWB.msg('protect-expiry')+'<a class="infoLink" href="https://www.mediawiki.org/w/api.php?action=help&modules=main#main/datatypes" target="_blank" tabindex="-1">?</a> <input type="text" id="protectExpiry"/></label>'+
-		'</fieldset>'+
-		'<button id="movePage" disabled accesskey="m">'+JWB.msg('editbutton-move')+'</button> '+
-		'<button id="deletePage" class="delete" disabled accesskey="x">'+JWB.msg('editbutton-delete')+'</button> '+
-		'<button id="protectPage" disabled accesskey="z">'+JWB.msg('editbutton-protect')+'</button> '+
-		'<button id="skipPage" disabled title="['+JWB.tooltip+'n]">'+JWB.msg('editbutton-skip')+'</button>'+
-		'<div class="logActionNote">'+JWB.msg('log-action-note')+'</div>'
+		(JWB.sysop?
+		'<fieldset id="protect-options-container">'+
+			'<legend>'+JWB.msg('protect-header')+'</legend>'+
+			'<div>'+
+				'<label for="editProt">'+JWB.msg('protect-edit')+'</label>'+
+				'<select id="editProt">'+
+					'<option value="all" selected>'+JWB.msg('protect-none')+'</option>'+
+					'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
+					'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
+				'</select>'+
+			'</div>'+
+			'<div>'+
+				'<label for="moveProt">'+JWB.msg('protect-move')+'</label>'+
+				'<select id="moveProt">'+
+					'<option value="" selected>('+JWB.msg('protect-like-edit')+')</option>'+
+					'<option value="all">'+JWB.msg('protect-none')+'</option>'+
+					'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
+					'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
+				'</select>'+
+			'</div>'+
+			'<div>'+
+				'<label for="uploadProt">'+JWB.msg('protect-upload')+'</label>'+
+				'<select id="uploadProt">'+
+					'<option value="" selected>('+JWB.msg('protect-like-edit')+')</option>'+
+					'<option value="all">'+JWB.msg('protect-none')+'</option>'+
+					'<option value="autoconfirmed">'+JWB.msg('protect-autoconf')+'</option>'+
+					'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
+				'</select>'+
+			'</div>'+
+			'<div>'+
+				'<label for="protectExpiry">'+
+					JWB.msg('protect-expiry')+
+					'<a class="infoLink" href="https://www.mediawiki.org/w/api.php?action=help&modules=main#main/datatypes" target="_blank" tabindex="-1">?</a>'+
+				'</label>'+
+				'<input type="text" id="protectExpiry"/>'+
+			'</div>'+
+		'</fieldset>'
+		:'')+
+		'<fieldset id="page-actions-container">'+
+			'<legend title="'+JWB.msg('log-action-note')+'">'+JWB.msg('page-actions-header')+'</legend>'+
+			'<button id="movePage" disabled accesskey="m">'+JWB.msg('editbutton-move')+'</button>'+
+			(JWB.sysop?
+				'<button id="deletePage" disabled accesskey="x">'+JWB.msg('editbutton-delete')+'</button>'+
+				'<button id="protectPage" disabled accesskey="z">'+JWB.msg('editbutton-protect')+'</button>'
+			:'')+
+			'<button class="skipbutton" disabled title="['+JWB.tooltip+'n]">'+JWB.msg('editbutton-skip')+'</button>'+
+			'<div role="group" aria-labelledby="act-also">'+
+				'<span id="act-also">'+JWB.msg('act-also')+'</span>'+
+				'<div>'+
+					'<div>'+
+						'<input type="checkbox" id="acttalk" checked>'+
+						'<label for="acttalk">'+JWB.msg('act-talk-page')+'</label>'+
+					'</div>'+
+					'<div>'+
+						'<input type="checkbox" id="actsubpage" checked>'+
+						'<label for="actsubpage">'+JWB.msg('act-subpage')+'</label>'+
+					'</div>'+
+				'</div>'+
+			'</div>'+
+		'</fieldset>'
 	);
-	$('.JWBtabc[data-tab="5"]').html('<table id="actionlog"><tbody></tbody></table>');
+	$('.JWBtabc[data-tab="5"]').html(
+		'<div id="actionlog-container">'+
+			'<table id="actionlog">'+
+				'<thead>'+
+					'<tr>'+
+						'<th>'+JWB.msg('log-time-header') + '</th>'+
+						'<th>'+JWB.msg('log-action-header') + '</th>'+
+						'<th>'+JWB.msg('log-page-header') + '</th>'+
+					'</tr>'+
+				'</thead><tbody></tbody>'+
+			'</table>'+
+		'</div>'
+	);
 	$('#pagelistPopup form').html(
-		'<div id="ns-filter" title="'+JWB.msg('tip-ns-select')+'">' + JWB.msg('label-ns-select') + NSList + '</div>'+
-		'<fieldset>'+
-			'<legend><label><input type="checkbox" id="categorymembers" name="categorymembers" value="cm"> '+JWB.msg('legend-cm')+'</label></legend>'+
-			'<label title="'+JWB.msg('tip-cm')+'">'+JWB.msg('label-cm')+' <input type="text" name="cmtitle" id="cmtitle" class="fullwidth"></label>'+
-			'<div>'+JWB.msg('cm-include')+' '+
-				'<label><input type="checkbox" id="cmtype-page" name="cmtype" value="page" checked> '+JWB.msg('cm-include-pages')+'</label>'+
-				'<label><input type="checkbox" id="cmtype-subcg" name="cmtype" value="subcat" checked> '+JWB.msg('cm-include-subcgs')+'</label>'+
-				'<label><input type="checkbox" id="cmtype-file" name="cmtype" value="file" checked> '+JWB.msg('cm-include-files')+'</label>'+
+		'<div id="pageListPopup-container">'+
+			'<div id="ns-filter" title="'+JWB.msg('tip-ns-select')+'">'+
+				'<label for="namespacelist">'+JWB.msg('label-ns-select')+'</label>'+
+				NSList+
 			'</div>'+
-		'</fieldset>'+
-		'<fieldset>'+
-			'<legend><label><input type="checkbox" name="linksto" id="linksto"> '+JWB.msg('legend-linksto')+'</label></legend>'+
-			'<label>'+JWB.msg('label-linksto')+' <input type="text" name="title" id="linksto-title" class="fullwidth"></label>'+
-			'<div>'+JWB.msg('links-include')+' '+
-				'<label><input type="checkbox" id="backlinks" name="backlinks" value="bl" checked> '+JWB.msg('links-include-links')+'</label>'+
-				'<label><input type="checkbox" id="embeddedin" name="embeddedin" value="ei"> '+JWB.msg('links-include-templ')+'</label>'+
-				'<label><input type="checkbox" id="imageusage" name="imageusage" value="iu"> '+JWB.msg('links-include-files')+'</label>'+
+			'<div id="pageList-fieldsets">'+
+				'<fieldset>'+
+					'<legend>'+
+						'<div>'+
+							'<input type="checkbox" id="categorymembers" name="categorymembers" value="cm" autofocus>'+
+							'<label for="categorymembers">'+JWB.msg('legend-cm')+'</label>'+
+						'</div>'+
+					'</legend>'+
+					'<div title="'+JWB.msg('tip-cm')+'">'+
+						'<label for="cmtitle">'+JWB.msg('label-cm')+'</label>'+
+						'<input type="text" name="cmtitle" id="cmtitle">'+
+					'</div>'+
+					'<div role="group" aria-labelledby="cm-include">'+
+						'<span id="cm-include">'+JWB.msg('cm-include')+'</span>'+
+						'<div>'+
+							'<div>'+
+								'<input type="checkbox" id="cmtype-page" name="cmtype" value="page" checked>'+
+								'<label for="cmtype-page">'+JWB.msg('cm-include-pages')+'</label>'+
+							'</div>'+
+							'<div>'+
+								'<input type="checkbox" id="cmtype-subcg" name="cmtype" value="subcat" checked>'+
+								'<label for="cmtype-subcg">'+JWB.msg('cm-include-subcgs')+'</label>'+
+							'</div>'+
+							'<div>'+
+								'<input type="checkbox" id="cmtype-file" name="cmtype" value="file" checked>'+
+								'<label for="cmtype-file">'+JWB.msg('cm-include-files')+'</label>'+
+							'</div>'+
+						'</div>'+
+					'</div>'+
+				'</fieldset>'+
+				'<fieldset>'+
+					'<legend>'+
+						'<div>'+
+							'<input type="checkbox" name="linksto" id="linksto">'+
+							'<label for="linksto">'+JWB.msg('legend-linksto')+'</label>'+
+						'</div>'+
+					'</legend>'+
+					'<div>'+
+						'<label for="linksto-title">'+JWB.msg('label-linksto')+'</label>'+
+						'<input type="text" name="title" id="linksto-title">'+
+					'</div>'+
+					'<div role="group" aria-labelledby="links-include">'+
+						'<span id="links-include">'+JWB.msg('links-include')+'</span>'+
+						'<div>'+
+							'<div>'+
+								'<input type="checkbox" id="backlinks" name="backlinks" value="bl" checked>'+
+								'<label for="backlinks">'+JWB.msg('links-include-links')+'</label>'+
+							'</div>'+
+							'<div>'+
+								'<input type="checkbox" id="embeddedin" name="embeddedin" value="ei">'+
+								'<label for="embeddedin">'+JWB.msg('links-include-templ')+'</label>'+
+							'</div>'+
+							'<div>'+
+								'<input type="checkbox" id="imageusage" name="imageusage" value="iu">'+
+								'<label for="imageusage">'+JWB.msg('links-include-files')+'</label>'+
+							'</div>'+
+						'</div>'+
+					'</div>'+
+					'<div role="group" aria-labelledby="links-redir">'+
+						'<span id="links-redir">'+JWB.msg('links-redir')+'</span>'+
+						'<div>'+
+							'<div>'+
+								'<input type="radio" id="rfilter-redir" name="filterredir" value="redirects">'+
+								'<label for="rfilter-redir">'+JWB.msg('links-redir-redirs')+'</label>'+
+							'</div>'+
+							'<div>'+
+								'<input type="radio" id="rfilter-nonredir" name="filterredir" value="nonredirects">'+
+								'<label for="rfilter-nonredir">'+JWB.msg('links-redir-noredirs')+'</label>'+
+							'</div>'+
+							'<div>'+
+								'<input type="radio" id="rfilter-all" name="filterredir" value="all" checked>'+
+								'<label for="rfilter-all">'+JWB.msg('links-redir-all')+'</label>'+
+							'</div>'+
+						'</div>'+
+					'</div>'+
+					'<div title="'+JWB.msg('tip-link-redir')+'">'+
+						'<input type="checkbox" name="redirect" value="true" checked id="linksto-redir">'+
+						'<label for="linksto-redir">'+JWB.msg('label-link-redir')+'</label>'+
+					'</div>'+
+				'</fieldset>'+
+				'<fieldset>'+
+					'<legend>'+
+						'<div>'+
+							'<input type="checkbox" id="prefixsearch" name="prefixsearch" value="ps">'+
+							'<label for="prefixsearch">'+JWB.msg('legend-ps')+'</label>'+
+						'</div>'+
+					'</legend>'+
+					'<div>'+
+						'<label for="pssearch">'+JWB.msg('label-ps')+'</label>'+
+						'<input type="text" name="pssearch" id="pssearch">'+
+					'</div>'+
+					'<div title="'+JWB.msg('tip-ps-strict')+'">'+
+						'<input type="checkbox" name="allpages" value="ap" id="psstrict" checked>'+
+						'<label for="psstrict">'+JWB.msg('label-ps-strict')+'</label>'+
+					'</div>'+
+				'</fieldset>'+
+				'<fieldset>'+
+					'<legend>'+
+						'<div>'+
+							'<input type="checkbox" id="watchlistraw" name="watchlistraw" value="wr">'+
+							'<label for="watchlistraw">'+JWB.msg('legend-wr')+'</label>'+
+						'</div>'+
+					'</legend>'+
+					'<span id="watchlist-desc">'+JWB.msg('label-wr')+'</span>'+
+				'</fieldset>'+
+				'<fieldset>'+
+					'<legend>'+
+						'<div>'+
+							'<input type="checkbox" id="proplinks" name="links" value="pl">'+
+							'<label for="proplinks">'+JWB.msg('legend-pl')+'</label>'+
+						'</div>'+
+					'</legend>'+
+					'<div title="'+JWB.msg('tip-pl')+'">'+
+						'<label for="titles">'+JWB.msg('label-pl')+'</label>'+
+						'<input type="text" id="titles" name="titles">'+
+					'</div>'+
+				'</fieldset>'+
+				'<fieldset>'+
+					'<legend>'+
+						'<div>'+
+							'<input type="checkbox" id="wksearch" name="search" value="sr">'+
+							'<label for="wksearch">'+JWB.msg('legend-sr')+'</label>'+
+						'</div>'+
+					'</legend>'+
+					'<div title="'+JWB.msg('tip-sr')+'\n'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
+						'<label for="srsearch">'+JWB.msg('label-sr')+'</label>'+
+						'<input type="text" id="srsearch" name="srsearch" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
+					'</div>'+
+				'</fieldset>'+
+				(JWB.hasSMW?'<fieldset>'+
+					'<legend>'+
+						'<div>'+
+							'<input type="checkbox" id="smwask" name="smwask" value="smw">'+
+							'<label for="smwask">'+JWB.msg('legend-smw', JWB.msg('smw-slow'))+'</label>'+
+						'</div>'+
+					'</legend>'+
+					'<div title="'+JWB.msg('label-smw', '\n|limit=500')+'">'+
+						'<input type="text" id="smwquery" name="smwquery" placeholder="[[Located in::Germany]]">'+
+					'</div>'+
+				'</fieldset>':'')+
+				'<button type="submit">'+JWB.msg('pagelist-generate')+'</button>'+
 			'</div>'+
-			'<div>'+JWB.msg('links-redir')+' '+
-				'<label><input type="radio" id="rfilter-redir" name="filterredir" value="redirects"> '+JWB.msg('links-redir-redirs')+'</label>'+
-				'<label><input type="radio" id="rfilter-nonredir" name="filterredir" value="nonredirects"> '+JWB.msg('links-redir-noredirs')+'</label>'+
-				'<label><input type="radio" id="rfilter-all" name="filterredir" value="all" checked> '+JWB.msg('links-redir-all')+'</label>'+
-			'</div>'+
-			'<label title="'+JWB.msg('tip-link-redir')+'">'+
-				'<input type="checkbox" name="redirect" value="true" checked id="linksto-redir"> '+JWB.msg('label-link-redir')+
-			'</label>'+
-		'</fieldset>'+
-		'<fieldset>'+
-			'<legend><label><input type="checkbox" id="prefixsearch" name="prefixsearch" value="ps"> '+JWB.msg('legend-ps')+'</label></legend>'+
-			'<label>'+JWB.msg('label-ps')+' <input type="text" name="pssearch" id="pssearch" class="fullwidth"></label>'+
-			'<label title="'+JWB.msg('tip-ps-strict')+'"><input type="checkbox" name="allpages" value="ap" id="psstrict" checked> '+JWB.msg('label-ps-strict')+'</label>'+
-		'</fieldset>'+
-		'<fieldset>'+
-			'<legend><label><input type="checkbox" id="watchlistraw" name="watchlistraw" value="wr"> '+JWB.msg('legend-wr')+'</label></legend>'+
-			JWB.msg('label-wr')+
-		'</fieldset>'+
-		'<fieldset>'+
-			'<legend><label><input type="checkbox" id="proplinks" name="links" value="pl"> '+JWB.msg('legend-pl')+'</label></legend>'+
-			'<label title="'+JWB.msg('tip-pl')+'">'+JWB.msg('label-pl')+' <input type="text" id="titles" name="titles" class="fullwidth"></label>'+
-		'</fieldset>'+
-		'<fieldset>'+
-			'<legend><label><input type="checkbox" id="proplinks" name="search" value="sr"> '+JWB.msg('legend-sr')+'</label></legend>'+
-			'<label title="'+JWB.msg('tip-sr')+'\n'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
-				JWB.msg('label-sr')+
-				' <input type="text" id="srsearch" name="srsearch" class="fullwidth" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
-			'</label>'+
-		'</fieldset>'+
-		'<fieldset class="listSMW">'+
-			'<legend><label><input type="checkbox" id="smwask" name="smwask" value="smw"> '+JWB.msg('legend-smw', JWB.msg('smw-slow'))+'</label></legend>'+
-			'<textarea id="smwquery" name="smwquery" placeholder="'+JWB.msg('label-smw', '\n|limit=500')+'"></textarea>'+
-		'</fieldset>'+
-		'<button type="submit">'+JWB.msg('pagelist-generate')+'</button>'
+		'</div>'
 	);
-	if (JWB.hasSMW) {
-		$('#pagelistPopup').addClass('hasSMW');
-	}
 	$('body').addClass('AutoWikiBrowser').addClass('notheme'); //allow easier custom styling of JWB.
 	$('[accesskey]').each(function() {
 		let lbl = this.accessKeyLabel || this.accessKey; // few browsers support accessKeyLabel, so fallback to accessKey.
@@ -2084,19 +2291,14 @@ JWB.init = function() {
 	
 	/***** Setup *****/
 	JWB.setup.save('_blank'); //default setup
-	if (JWB.settings.hasOwnProperty('default')) {
-		JWB.setup.apply();
-	} else if (JWB.setup.initialised) {
-		// If we already initialised, create the default settings profile.
-		JWB.setup.save('default');
-	}
-	JWB.setup.extend({});
+	JWB.setup.save('default');
+	JWB.setup.load();
 
 	/***** Event handlers *****/
 	
 	//Alert user when leaving the tab, to prevent accidental closing.
 	onbeforeunload = function() {
-		return "Closing this tab will cause you to lose all progress.";
+		return JWB.msg('confirm-leave');
 	};
 	ondragover = function(e) {
 		e.preventDefault();
@@ -2116,12 +2318,6 @@ JWB.init = function() {
 		$('.JWBtabc[data-tab="'+$(this).attr('data-tab')+'"]').addClass('active');
 	});
 	
-	function showRegexFlags() {
-		// >>this<< is the element that's triggered
-		$(this).parent().nextAll('label').toggle(this.checked);
-	}
-	$('body').on('change', '#useRegex, #containRegex, .useRegex', showRegexFlags);
-	
 	$('#preparse-reset').click(function() {
 		$('#articleList').val($('#articleList').val().replace(/#PRE-PARSE-STOP/g,'').replace(/\n\n/g, '\n'));
 	});
@@ -2133,6 +2329,7 @@ JWB.init = function() {
 	});
 	$('#download').click(JWB.setup.download);
 	$('#saveToWiki').click(JWB.setup.submit);
+	$('#importLabel').click(() => $('#import').click());
 	$('#import').change(JWB.setup.import);
 	ondrop = JWB.setup.import;
 	$('#updateSetups').click(JWB.setup.load);
@@ -2142,28 +2339,22 @@ JWB.init = function() {
 		$('#refreshRETF').click(RETF.load);
 		$('#skipRETF').click(JWB.skipRETF);
 		$('#enableRETF').change(function() {
-			$('#skipRETF').css('visibility', this.checked ? 'visible' : 'hidden');
+			$('#RETF-container').toggle(this.checked);
 		});
 	}
 
-	$('#replacesButton, #pagelistButton').click(function() {
-		var popup = this.id.slice(0, -6); //omits the 'Button' in the id by cutting off the last 6 characters
-		$('#'+popup+'Popup, #overlay').show();
-	});
-	$('#overlay').click(function() {
-		$('#replacesPopup, #pagelistPopup, #overlay').hide();
-		JWB.listReplaces();
-		JWB.pl.done = true;
-		JWB.pl.stop();
-	});
 	$('.moreReplaces').click(function() {
 		var location = $(this).data('insert'); // either call $(this).before() or $(this).after()
-		$(this)[location](findreplace);
+		$(this)[location](findreplace());
 	});
 	$('#replacesPopup').on('keydown', '.replaces:last', function(e) {
 		if (e.which === 9) $('.moreReplaces[data-insert="before"]')[0].click();
 	});
 	
+	$('#pagelistPopup').on('close', function() {
+		JWB.pl.done = true;
+		JWB.pl.stop();
+	});
 	$('#pl-form').submit(function(e) {
 		e.preventDefault();
 		JWB.pl.generate();
@@ -2200,33 +2391,26 @@ JWB.init = function() {
 	});
 	
 	$('#watchNow').click(JWB.api.watch);
-	$('#autosave').change(function() {
-		$('#throttle').prop('disabled', !this.checked);
-	});
-	
-	$('#viaJWB').change(function() {
-		$('#summary').parent('label')
-			.toggleClass('viaJWB', this.checked)
-			.attr('maxlength', 500 - this.checked*JWB.summarySuffix.length); // Change the max size of the allowed summary according to having a suffix or not.
-	});
+
 	$('#startbutton').click(JWB.start);
 	$('#stopbutton').click(JWB.stop);
 	$('#submitButton').click(JWB.api.submit);
 	$('#previewButton').click(JWB.api.preview);
 	$('#diffButton').click(JWB.api.diff);
 	
-	$('#skipButton, #skipPage').click(function() {
+	$('.skipbutton').click(function() {
 		JWB.log('skip', JWB.list[0].split('|')[0]);
 		JWB.next();
 	});
+
+	$('#movePage').click(function() {
+		if ($('#moveTo').val().length === 0) {
+			return alert(JWB.msg('alert-no-move'));
+		}
+		JWB.api.move();
+	});
 	
 	if (JWB.sysop) {
-		$('#movePage').click(function() {
-			if ($('#moveTo').val().length === 0) {
-				return alert(JWB.msg('alert-no-move'));
-			}
-			JWB.api.move();
-		});
 		$('#protectPage').click(JWB.api.protect);
 		$('#deletePage').click(JWB.api.del);
 	}
