@@ -222,7 +222,7 @@ JWB.messages.uk = {
 	'cm-include-files':		'файли',
 	'legend-linksto':		'Сторінки, що посилаються на:',
 	'label-linksto':		'Посилання на:',
-	'links-include':		'Враховивати:',
+	'links-include':		'Враховувати:',
 	'links-include-links':	'вікі-посилання',
 	'links-include-templ':	'включення',
 	'links-include-files':	'використання як файлу',
