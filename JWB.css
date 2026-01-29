@@ -122,12 +122,8 @@ input[type="text"], input[type="number"] {
 	background-color: initial;
 	border: 0;
 	border-bottom: 1px solid var(--border-color-base, #a2a9b1);
-	box-sizing: border-box;
-	font-family: inherit;
 	font-size: 16px;
-	line-height: 1;
 	padding: 0 0 2px;
-	resize: none;
 	width: 100%;
 }
 
@@ -456,7 +452,7 @@ body {
 	color: var(--color-base, #202122);
 	display: inline-flex;
 	flex: 20%;
-	font: 500 14px/1 Rubik, Roboto, Arial, sans-serif;
+	font-size: 14px;
 	height: 40px;
 	justify-content: center;
 	letter-spacing: .5px;
@@ -668,8 +664,7 @@ dt:has(+ #otherActions)::before {
 /** Tab 2: editing. **/
 
 .infoLink {
-	font-size: 70%;
-	height: 13px;
+	font-size: 80%;
 	text-decoration: none;
 	border-bottom: 1px dotted #000;
 	cursor: help;
@@ -689,7 +684,7 @@ div:has(> #summary) {
 #suffix {
 	background-color: var(--background-color-neutral, #eaecf0);
 	color: var(--color-base--hover, #404244);
-	font-size: 12px;
+	font-size: 13px;
 	margin-inline-start: 6px;
 	margin-top: -1px;
 	padding: 4px 6px;
