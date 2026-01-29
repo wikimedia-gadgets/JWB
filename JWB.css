@@ -21,6 +21,7 @@
 /* Component styles. */
 label, div[role="group"] > span {
 	white-space: nowrap;
+	font-size: 15px;
 }
 
 /* Groups. */
@@ -44,7 +45,7 @@ div[role="group"] > div:not(:has(> input)) {
 }
 
 div[role="group"] div:has(> input[type="radio"]) {
-	top: 1px;
+	top: 1.5px;
 }
 
 div[role="group"] div:has(> input[type="checkbox"]) {
@@ -148,7 +149,6 @@ div:has(> input[type="checkbox"]) {
 	display: inline-flex;
 	height: 20px;
 	position: relative;
-	padding-top: 1px;
 }
 
 input[type="checkbox"] {
@@ -164,11 +164,7 @@ input[type="checkbox"] + label {
 	color: var(--color-base, #202122);
 	cursor: pointer;
 	display: flex;
-	font-size: 14px;
-	font-weight: normal;
-	line-height: 1.25;
 	user-select: none;
-	word-wrap: break-word;
 }
 
 input[type="checkbox"] + label::before {
@@ -189,7 +185,7 @@ input[type="checkbox"] + label::after {
 	mask-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' d='M3 15h12V3H3v12zm13 2H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1z'/></svg>");
 	mask-repeat: no-repeat;
 	position: absolute;
-	top: 1px;
+	top: 2px;
 	width: 18px;
 }
 
@@ -278,12 +274,16 @@ input[type="radio"]:checked + label::after {
 }
 
 input[type="radio"]:disabled {
-	cursor: not-allowed;
+	pointer-events: none;
 }
 
 input[type="radio"]:disabled + label::before {
 	opacity: .5;
-	pointer-events: none;
+	color: var(--border-color-base, #a2a9b1);
+}
+
+input[type="radio"]:disabled:checked + label::before {
+	color: var(--color-link, #36c);
 }
 
 /* Spinner. */
@@ -439,8 +439,6 @@ body {
 	flex-flow: row wrap;
 	grid-column-end: span 12;
 }
-
-
 
 /* Tabs. */
 
