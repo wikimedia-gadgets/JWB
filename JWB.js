@@ -532,7 +532,7 @@ JWB.api.submit = function(page) {
 		console.log(page, JWB.page.name, $('#currentpage a').html());
 		JWB.stop();
 		alert(JWB.msg('autosave-error', JWB.msg('tab-log')));
-		$('#currentpage').html(JWB.msg('editbox-caption')+':');
+		$('#currentpage').html(JWB.msg('editbox-caption'));
 		return;
 	}
 	var newval = $('#editBoxArea').val();
@@ -1455,7 +1455,7 @@ JWB.stop = function() {
 	if (!JWB.isStopped) JWB.toggleButtons();
 	$('#resultWindow').removeAttr('class').html('');
 	$('#editBoxArea').val('');
-	$('#currentpage').html(JWB.msg('editbox-caption')+':');
+	$('#currentpage').html(JWB.msg('editbox-caption'));
 	JWB.pl.done = true;
 	JWB.pl.stop();
 	JWB.isStopped = true;
