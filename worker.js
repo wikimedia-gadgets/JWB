@@ -81,7 +81,9 @@ JWB.worker.function = function() {
 				unparsedReplace(data.str, data.pattern, data.flags, data.rWith, callback);
 				break;
 			default:
-				postMessage({err: 'Unknown command: ' + data.cmd});
+				// postMessage({err: 'Unknown command: ' + data.cmd});
+				console.log("Unknown command: " + data.cmd);
+				console.trace();
 		}
 	};
 	

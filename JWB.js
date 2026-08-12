@@ -25,7 +25,7 @@ mw.loader.load('//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/load.
  * with this program; if not, write to the Free Software Foundation, Inc.,
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  * http://www.gnu.org/copyleft/gpl.html
- * @version 4.2.2
+ * @version 4.5.1
  * @author Joeytje50
  * </nowiki>
  */
@@ -36,6 +36,12 @@ window.JWBdeadman = false; // ADMINS: in case of fire, set this variable to true
 //TODO: generate page list based on images on a page
 //TODO: Add feature to perform general cleanup (<table> to {|, fullurl-links to wikilinks, removing underscores from wikilinks)
 //TODO: Add report button to AJAX error alert box
+//TODO: Re-add errored pages to the page list
+//TODO: Automatically generate full list of protection levels
+//TODO: Add 'Ignore quotes' alongside 'Ignore unparsed content'; for example: Ignore [] Unparsed content [] Quotes
+//TODO: Read Wikipedia:AutoWikiBrowser/Config for when not to apply typo fixes
+//TODO: RETF disable any \b and some other cases
+//TODO: Fix deletedrevs deprecated API
 
 //Cleanup / modernize:
 // .indexOf('') != -1 -> .includes()
@@ -54,7 +60,7 @@ window.JWB = {}; //The main global object for the script.
 		'RETF.js':	'//en.wikipedia.org/w/index.php?title=User:Joeytje50/RETF.js&action=raw&ctype=text/javascript',
 		'worker.js':'//en.wikipedia.org/w/index.php?title=User:Joeytje50/JWB.js/worker.js&action=raw&ctype=text/javascript',
 	};
-	
+	JWB.allLoaded = false;
 	let objs = ['page', 'api', 'worker', 'fn', 'pl', 'messages', 'setup', 'settings', 'ns'];
 	for (let i=0;i<objs.length;i++) {
 		JWB[objs[i]] = {};
@@ -89,29 +95,34 @@ window.JWB = {}; //The main global object for the script.
 	}
 	mw.loader.load(JWB.imports['JWB.css'], 'text/css');
 	mw.loader.load('mediawiki.diff.styles');
-	
+
+	JWB.langs = [];
+
 	$.getScript(JWB.imports['i18n.js'], function() {
 		if (JWB.allowed === false) {
-			alert(JWB.msg('not-on-list'));
+			JWB.checkInit(); // deny access without attempting to load other languages.
 			return;
 		}
-		let langs = [];
+
 		if (JWB.lang !== 'en' && JWB.imports.i18n.hasOwnProperty(JWB.lang)) {
-			langs.push(JWB.imports.i18n[JWB.lang]);
+			JWB.langs.push(JWB.imports.i18n[JWB.lang]);
+			JWB.messages[JWB.lang] = JWB.messages[JWB.lang] || null;
+		} else if (JWB.lang !== 'en' && JWB.lang !== 'qqx') {
+			// this only happens if the language file does not exist.
+			JWB.lang = 'en';
 		}
 		if (JWB.contentLang !== 'en' && JWB.contentLang !== JWB.lang && JWB.imports.i18n.hasOwnProperty(JWB.contentLang)) {
-			langs.push(JWB.imports.i18n[JWB.contentLang]);
+			JWB.langs.push(JWB.imports.i18n[JWB.contentLang]);
+			JWB.messages[JWB.contentLang] = JWB.messages[JWB.contentLang] || null;
 		}
-		if (langs.length) {
-			$.when.apply($, langs.map(url => $.getScript(url))).done(function() {
-				if (JWB.allowed === true) {
-					JWB.init(); //init if verification has already returned true
-				} else if (JWB.allowed === false) {
-					alert(JWB.msg('not-on-list'));
-				}
+
+		if (JWB.langs.length) {
+			$.when.apply($, JWB.langs.map(url => $.getScript(url))).done(function(r) {
+				JWB.checkInit();
 			});
-		} else if (JWB.allowed === true) { // no more languages to load.
-			JWB.init();
+		} else { // no more languages to load.
+			console.log('no languages needed loading');
+			JWB.checkInit();
 		}
 	});
 	
@@ -131,11 +142,10 @@ window.JWB = {}; //The main global object for the script.
 
 	(new mw.Api()).get({
 		action: 'query',
-		titles: 'Project:AutoWikiBrowser/CheckPage',
+		titles: 'Project:AutoWikiBrowser/CheckPageJSON|MediaWiki:Tag-JWB',
 		prop: 'info|revisions',
 		meta: 'userinfo|siteinfo',
 		rvprop: 'content',
-		rvlimit: 1,
 		uiprop: 'groups',
 		siprop: 'namespaces|usergroups|extensions',
 		indexpageids: true,
@@ -168,54 +178,51 @@ window.JWB = {}; //The main global object for the script.
 		
 		JWB.username = response.query.userinfo.name; //preventing any "hacks" that change wgUserName or mw.config.wgUserName
 		var groups = response.query.userinfo.groups;
-		var page = response.query.pages[response.query.pageids[0]];
-		var users, bots;
-		if (response.query.pageids[0] !== '-1' && /<!--\s*enabledusersbegins\s*-->/.test(page.revisions[0]['*'])) {
-			var cont = page.revisions[0]['*'];
-			users = cont.substring(
-				cont.search(/<!--\s*enabledusersbegins\s*-->/),
-				cont.search(/<!--\s*enabledusersends\s*-->/)
-			).split('\n');
-			if (/<!--\s*enabledbots\s*-->/.test(cont)) {
-				bots = cont.substring(
-					cont.search(/<!--\s*enabledbots\s*-->/),
-					cont.search(/<!--\s*enabledbotsends\s*-->/)
-				).split('\n');
-			} else bots = [];
-			var i=0;
-			while (i<users.length) {
-			    if (users[i].charAt(0) !== '*') {
-			    	users.splice(i,1);
-			    } else {
-			    	users[i] = $.trim(users[i].substr(1));
-			    	i++;
-			    }
-			}
-			i=0;
-			while (i<bots.length) {
-			    if (bots[i].charAt(0) !== '*') {
-			    	bots.splice(i,1);
-			    } else {
-			    	bots[i] = $.trim(bots[i].substr(1));
-			    	i++;
-			    }
+		var page = Object.values(response.query.pages).find(page => page.title.includes("AutoWikiBrowser/CheckPageJSON"));
+		var tagPage = Object.values(response.query.pages).find(page => page.title.includes("Tag-JWB"));
+		JWB.hasTag = (tagPage.missing === undefined);
+		var users = [];
+		var bots = [];
+		JWB.sysop = groups.indexOf('sysop') !== -1;
+		if (response.query.pageids[0] !== '-1') {
+			var checkPageData = JSON.parse(page.revisions[0]['*']);
+			users = checkPageData.enabledusers;
+			if ("enabledbots" in checkPageData) {
+				bots = checkPageData.enabledbots;
 			}
 		} else {
 			users = false; //fallback when page doesn't exist
+			if (JWB.sysop) { // Check and inform admins if their checkpage is the unsupported format.
+				(new mw.Api()).get({
+					action: 'query',
+					titles: 'Project:AutoWikiBrowser/CheckPage',
+					prop: 'info',
+					indexpageids: true,
+				}).done(function(oldpage){
+					var q = oldpage.query;
+					if (q.pageids[0] != '-1' && !q.pages[q.pageids[0]].hasOwnProperty('redirect')) {
+						// CheckPageJSON does not exist, and CheckPage does exist, and is not a redirect.
+						// This indicates the checkpage needs to be ported to JSON. Notify admins.
+						prompt('Warning: The AWB checkpage found at Project:AutoWikiBrowser/CheckPage is no longer supported.\n'+
+								'Please convert this checkpage to a JSON checkpage. See the URL below for more information.\n'+
+								'After creating the JSON checkpage, you can use "Special:ChangeContentModel" to change the content model to JSON.',
+								'https://en.wikipedia.org/wiki/Wikipedia:AutoWikiBrowser/CheckPage_format');
+					}
+				});
+			}
 		}
+		JWB.bot = groups.indexOf('bot') !== -1 && (users === false || bots.includes(JWB.username));
 		// Temporary global debugging variables
 		JWB.debug = [groups.indexOf('bot'), users === false, bots && bots.indexOf(JWB.username)];
-		JWB.bot = groups.indexOf('bot') !== -1 && (users === false || bots.indexOf(JWB.username) !== -1);
-		JWB.sysop = groups.indexOf('sysop') !== -1;
 		if (JWB.username === "Joeytje50" && response.query.userinfo.id === 13299994) {//TEMP: Dev full access to entire interface.
 			JWB.bot = true;
 			users.push("Joeytje50");
 		}
-		if (JWB.sysop || response.query.pageids[0] === '-1' || users.indexOf(JWB.username) !== -1 || users === false) {
+		if (JWB.sysop || response.query.pageids[0] === '-1' || users === false || users.includes(JWB.username) || bots.includes(JWB.username)) {
 			JWB.allowed = true;
-			if (JWB.messages.en) JWB.init(); //init if messages have already loaded
+			JWB.checkInit(); //init if everything necessary has been loaded
 		} else {
-			if (JWB.messages.en) {
+			if (JWB.allLoaded) {
 				//run this after messages have loaded, so the message that shows is in the user's language
 				alert(JWB.msg('not-on-list'));
 			}
@@ -232,8 +239,9 @@ window.JWB = {}; //The main global object for the script.
 //Main template for API calls
 JWB.api.call = function(data, callback, onerror) {
 	data.format = 'json';
-	if (data.action !== 'query' && data.action !== 'compare' && data.action !== 'ask') {
+	if (data.action !== 'query' && data.action !== 'compare' && data.action !== 'ask' && data.action !== 'parse' && data.action !== 'watch') {
 		data.bot = true; // mark edits as bot
+		if (JWB.hasTag) data.tags = 'JWB'; // tag with 'JWB'
 	}
 	$.ajax({
 		data: data,
@@ -297,9 +305,9 @@ JWB.api.diff = function(callback) {
 			}
 		});
 		$('table.diff tr').each(function() { //add data-line attribute to every line, relative to the previous one. Used for click event.
-			if (!$(this).next().is('[data-line]') && !$(this).next().has('td.diff-deletedline + td.diff-empty')) {
+			if (!$(this).next().is('[data-line]') && !$(this).next().children('td.diff-deletedline + td.diff-empty').length) {
 				$(this).next().attr('data-line',parseInt($(this).data('line'))+1);
-			} else if ($(this).next().has('td.diff-deletedline + td.diff-empty')) {
+			} else if ($(this).next().children('td.diff-deletedline + td.diff-empty').length) {
 				$(this).next().attr('data-line',$(this).data('line')); //copy over current data-line for deleted lines to prevent them from messing up counting.
 			}
 		});
@@ -387,6 +395,7 @@ JWB.api.get = function(pagename) {
 		if (response.query.redirects) {
 			JWB.page.name = response.query.redirects[0].to;
 		}
+		JWB.page.path = mw.config.get('wgArticlePath').replace('$1', encodeURIComponent(JWB.page.name));
 		// check for skips that can be determined before replacing
 		if (!JWB.fn.allowBots(JWB.page.content, JWB.username) || !JWB.fn.allowBots(JWB.page.content)) {
 			// skip if {{bots}} template forbids editing on this page by user OR by JWB in general
@@ -420,7 +429,7 @@ JWB.api.get = function(pagename) {
 				});
 			}
 			if (skipping) {
-				console.log('skipped page before replaces')
+				console.log('skipped page before replaces');
 				return;
 			}
 			if ($('#skipNotContains').val().length) {
@@ -435,7 +444,7 @@ JWB.api.get = function(pagename) {
 				});
 			}
 			if (skipping) {
-				console.log('skipped page before replaces')
+				console.log('skipped page before replaces');
 				return;
 			}
 		} else {
@@ -443,13 +452,13 @@ JWB.api.get = function(pagename) {
 			skipNotContains = $('#skipNotContains').val();
 			if ((skipContains && JWB.page.content.includes(skipContains)) ||
 				(skipNotContains && !JWB.page.content.includes(skipNotContains))) {
-				console.log('skipped page before replaces')
+				console.log('skipped page before replaces');
 				return JWB.next();
 			}
 			JWB.status('done', true);
 		}
 		JWB.replace(JWB.page.content, function(newContent) {
-			if (JWB.stopped === true) return;
+			if (JWB.isStopped === true) return;
 			if ($('#skipNoChange').prop('checked') && JWB.page.content === newContent) { //skip if no changes are made
 				JWB.log('skip', JWB.page.name);
 				return JWB.next();
@@ -467,8 +476,8 @@ JWB.api.submit = function(page) {
 	JWB.status('submit');
 	var summary = $('#summary').val();
 	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
-	if ((typeof page === 'text' && page !== JWB.page.name) || $('#currentpage a').html().replace(/&amp;/g, '&') !== JWB.page.name) {
-		console.log(page, JWB.page.name, $('#currentpage a').html())
+	if ((typeof page === 'string' && page !== JWB.page.name) || $('#currentpage a').html().replace(/&amp;/g, '&') !== JWB.page.name) {
+		console.log(page, JWB.page.name, $('#currentpage a').html());
 		JWB.stop();
 		alert(JWB.msg('autosave-error', JWB.msg('tab-log')));
 		$('#currentpage').html(JWB.msg('editbox-currentpage', ' ', ' '));
@@ -509,18 +518,32 @@ JWB.api.submit = function(page) {
 	JWB.status('done', true);
 	JWB.next();
 };
-JWB.api.preview = function() {
+JWB.api.preview = function(callback) {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
 	JWB.status('preview');
 	JWB.api.call({
 		title: JWB.page.name,
 		action: 'parse',
 		pst: true,
-		text: $('#editBoxArea').val()
+		text: $('#editBoxArea').val(),
+		prop: 'text|categorieshtml|modules|jsconfigvars',
+		useskin: mw.config.get('skin')
 	}, function(response) {
 		$('#resultWindow').html(response.parse.text['*']);
 		$('#resultWindow div.previewnote').remove();
-		JWB.status('done', true);
+		$('#resultWindow').append(response.parse.categorieshtml['*']);
+
+		for (var entry of Object.entries(response.parse.jsconfigvars)) {
+			mw.config.set(entry[0], entry[1]);
+		}
+		mw.loader.using(response.parse.modules.concat(response.parse.modulescripts, response.parse.modulestyles), function() {
+			mw.hook('wikipage.content').fire($('#resultWindow .mw-parser-output'));
+			JWB.status('done', true);
+
+			if (typeof(callback) === 'function') {
+				callback();
+			}
+		});
 	});
 };
 JWB.api.move = function() {
@@ -549,16 +572,19 @@ JWB.api.move = function() {
 };
 JWB.api.del = function() {
 	if (JWB.isStopped) return; // prevent new API calls when stopped
-	JWB.status(($('#deletePage').is('.undelete') ? 'un' : '') + 'delete');
+	var del_action = (!JWB.page.exists ? 'un' : '') + 'delete';
+	JWB.status(del_action);
 	var summary = $('#summary').val();
 	if ($('#summary').parent('label').hasClass('viaJWB')) summary += JWB.summarySuffix;
-	JWB.api.call({
-		action: (!JWB.page.exists ? 'un' : '') + 'delete',
+	var data = {
+		action: del_action,
 		title: JWB.page.name,
 		token: JWB.page.token,
 		reason: summary
-	}, function(response) {
-		JWB.log((!JWB.page.exists ? 'un' : '') + 'delete', (response['delete']||response.undelete).title);
+	};
+	if ($('#deleteTalk').prop('checked')) data[del_action + 'talk'] = true;
+	JWB.api.call(data, function(response) {
+		JWB.log(del_action, (response['delete']||response.undelete).title);
 		JWB.status('done', true);
 		JWB.next(response.undelete && response.undelete.title);
 	});
@@ -633,7 +659,7 @@ JWB.pl.stop = function() {
 		$('#pagelistPopup legend input').trigger('change');
 		$('#pagelistPopup button img').remove();
 	}
-}
+};
 
 JWB.pl.getNSpaces = function() {
 	var list = $('#pagelistPopup [name="namespace"]')[0];
@@ -654,14 +680,14 @@ JWB.pl.getList = function(abbrs, lists, data) {
 	}
 	data.action = 'query';
 	var nspaces = JWB.pl.getNSpaces();
-	for (var i=0;i<abbrs.length;i++) {
+	for (let i=0;i<abbrs.length;i++) {
 		if (nspaces) data[abbrs[i]+'namespace'] = data[abbrs[i]+'namespace'] || nspaces; // if namespaces are already set, use that instead (for apnamespace)
 		data[abbrs[i]+'limit'] = 'max';
 	}
-	let linksList = lists.indexOf('links')
+	let linksList = lists.indexOf('links');
 	if (linksList !== -1) {
 		data.prop = 'links';
-		lists.splice(linksList, 1)
+		lists.splice(linksList, 1);
 	}
 	data.list = lists.join('|');
 	console.log('generating:', data);
@@ -674,14 +700,14 @@ JWB.pl.getList = function(abbrs, lists, data) {
 			var links;
 			for (var id in response.query.pages) {
 				links = response.query.pages[id].links;
-				for (var i=0;i<links.length;i++) {
+				for (let i=0;i<links.length;i++) {
 					plist.push(links[i].title);
 				}
 			}
 		}
 		for (var l in response.query) {
 			if (l === 'pages') continue;
-			for (var i=0;i<response.query[l].length;i++) {
+			for (let i=0;i<response.query[l].length;i++) {
 				plist.push(response.query[l][i].title);
 			}
 		}
@@ -781,7 +807,7 @@ JWB.pl.SMW = function(query) {
 		JWB.pl.stop(); // if JWB.pl.done == true show stopped interface. Otherwise mark as done.
 		JWB.pl.done = true;
 	});
-}
+};
 
 //JWB.pl.getList(['wr'], ['watchlistraw'], {}) for watchlists
 JWB.pl.generate = function() {
@@ -808,7 +834,7 @@ JWB.pl.generate = function() {
 		} else { //default input system
 			if ($(this).find('#psstrict').prop('checked')) {
 				// different list if prefixsearch is strict
-				let $input = $(this).find('#psstrict')
+				let $input = $(this).find('#psstrict');
 				list = $input.attr('name');
 				abbr = $input.val();
 			} else {
@@ -830,7 +856,7 @@ JWB.pl.generate = function() {
 				if (this.id == 'pssearch' && this.name == 'apprefix') {
 					// apprefix needs namespace separate from pagename
 					name = this.name;
-					let split = this.value.split(':')
+					let split = this.value.split(':');
 					val = split[1] || split[0];
 					let nsid = 0;
 					if (split[1]) { // if a namespace is given
@@ -915,7 +941,7 @@ JWB.setup.apply = function(name) {
 	}
 	var cur;
 	for (var c=0;c<self.replaces.length;c++) {
-		if ($('.replaces').length <= c) $('#moreReplaces')[0].click();
+		if ($('.replaces').length <= c) $('.moreReplaces[data-insert="before"')[0].click();
 		cur = self.replaces[c];
 		for (var d in cur) {
 			if (cur[d] === true || cur[d] === false) {
@@ -925,9 +951,10 @@ JWB.setup.apply = function(name) {
 			}
 		}
 	}
+	JWB.listReplaces();
 	$('.useRegex, #containRegex,'+
 	  '#pagelistPopup legend input,'+
-	  '#viaJWB').trigger('change'); //reset disabled inputs
+	  '#viaJWB, #enableRETF').trigger('change'); //reset disabled inputs
 };
 
 JWB.setup.getObj = function() {
@@ -1014,12 +1041,12 @@ JWB.setup.import = function(e) {
 			var data = JSON.parse(c.replace(/("[^"]*")|(\/\*[\w\W]*\*\/|\/\/[^\n]*)/g, function(match, g1, g2) {
 				if (g1) return g1;
 			}));
+			JWB.setup.extend(data);
 		} catch(e) {
 			alert(JWB.msg('json-err', e.message, JWB.msg('json-err-upload')));
 			console.log(e); //also log the error for further info
 			return;
 		}
-		JWB.setup.extend(data);
 	};
 	
 	JWB.status('Processing file');
@@ -1110,7 +1137,7 @@ JWB.setup.load = function() {
 };
 
 JWB.setup.moveNew = function(from, to, token) {
-	(new mw.Api()).post({
+	var data = {
 		action: 'move',
 		from: from,
 		to: to,
@@ -1120,7 +1147,9 @@ JWB.setup.moveNew = function(from, to, token) {
 		movesubpages: true, // if any
 		movetalk: true, // if any
 		ignorewarnings: true,
-	}).done(function(response) {
+	};
+	if (JWB.hasTag) data.tags = 'JWB';
+	(new mw.Api()).post(data).done(function(response) {
 		if (response.error === undefined) {
 			JWB.log('move', from, to);
 			JWB.settingspage = to.split('/')[1];
@@ -1128,7 +1157,7 @@ JWB.setup.moveNew = function(from, to, token) {
 			JWB.setup.load(); // load settings from newly moved page.
 		}
 	});
-}
+};
 
 JWB.setup.extend = function(obj) {
 	$.extend(JWB.settings, obj);
@@ -1177,7 +1206,7 @@ JWB.status = function(action, done) {
 	var status;
 	if (action instanceof Array) {
 		action[0] = 'status-'+action[0];
-		status = JWB.msg.apply(this, action)
+		status = JWB.msg.apply(this, action);
 	} else {
 		status = JWB.msg('status-'+action);
 	}
@@ -1203,6 +1232,31 @@ JWB.pageCount = function() {
 	$('#totPages').html(count);
 };
 
+//Generate list of replaces to be performed
+JWB.listReplaces = function() {
+	JWB.replaces = [];
+	$('.replaces').each(function() {
+		var $this = $(this);
+		var r = [];
+		r[0] = $this.find('.replaceText').val()
+					.replace(/\$x/gi, JWB.page.pagevar) // fill in pagevar
+					.replace(/\\{2}/g, '\\').replace(/\\n/g,'\n'); // handle \n -> newline;
+		r[1] = $this.find('.replaceWith').val();
+		if (r[0].length == 0 && r[1].length == 0) return; // don't bother replacing 2 empty strings.
+		r[2] = $this.find('.regexFlags').val();
+		r[3] = $this;
+		JWB.replaces.push(r);
+	});
+	if (JWB.replaces.length > 1 || (
+		JWB.replaces.length == 1 && $('.JWBtabc .replaceText').val() == '' && $('.JWBtabc .replaceWith').val() == ''
+	)) {
+		// There are replace rules in the replaces popup
+		$('#replacesButton').addClass('replacesActive');
+	} else {
+		$('#replacesButton').removeClass('replacesActive');
+	}
+};
+
 //Perform all specified find&replace actions
 JWB.replace = function(input, callback) {
 	JWB.status('replacing');
@@ -1214,14 +1268,11 @@ JWB.replace = function(input, callback) {
 	JWB.pageCount();
  	var varOffset = JWB.list[0].indexOf('|') !== -1 ? JWB.list[0].indexOf('|') + 1 : 0;
  	JWB.page.pagevar = JWB.list[0].substr(varOffset);
-	$('.replaces').each(function() {
-		var $this = $(this);
-		var replaceText = $this.find('.replaceText').val(),
-			replaceWith = $this.find('.replaceWith').val();
-		if (replaceText.length == 0 && replaceWith.length == 0) return; // don't bother replacing 2 empty strings.
-		var regexFlags = $this.find('.regexFlags').val();
-		var replace = replaceText.replace(/\$x/gi, JWB.page.pagevar).replace(/\\{2}/g, '\\').replace(/\\n/g,'\n') || '$';
+	$.each(JWB.replaces, function(i, r) {
+		var replaceText = r[0], replaceWith = r[1], regexFlags = r[2];
+		var $this = r[3];
 		var useRegex = replaceText.length == 0 || $this.find('.useRegex').prop('checked');
+		var replace = replaceText || '$'; // empty string => append (replace /$/ with text)
 		if (useRegex && regexFlags.indexOf('_') !== -1) {
 			replace = replace.replace(/[ _]/g, '[ _]'); //replaces any of [Space OR underscore] with a match for spaces or underscores.
 			replace = replace.replace(/(\[[^\]]*)\[ _\]/g, '$1 _'); //in case a [ _] was placed inside another [] match, remove the [].
@@ -1247,7 +1298,7 @@ JWB.replace = function(input, callback) {
 						callback(JWB.newContent); // newContent remains unmodified due to timeout.
 					}
 				}
-			}
+			};
 			if ($this.find('.ignoreNowiki').prop('checked')) {
 				if (!useRegex) {
 					replace = replace.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -1260,7 +1311,7 @@ JWB.replace = function(input, callback) {
 				JWB.newContent = JWB.newContent.split(replace).join(rWith); //global replacement without having to escape all special chars.
 			}
 		} catch(e) {
-			console.log('Regex error:', e)
+			console.log('Regex error:', e);
 			JWB.stop();
 			return JWB.status('regex-err', false);
 		}
@@ -1275,23 +1326,41 @@ JWB.replace = function(input, callback) {
 	}
 };
 
+JWB.skipRETF = function() {
+	if (!$('#enableRETF').prop('checked')) return; // RETF is not enabled to begin with
+	if (JWB.isStopped === true) return; // don't mess with the edit box when stopped
+	$('#enableRETF').prop('checked', false);
+	JWB.replace(JWB.page.content, function(newContent) {
+		JWB.editPage(newContent);
+		JWB.updateButtons();
+		$('#enableRETF').prop('checked', true);
+	});
+};
+
 // Edit the current page and pre-fill the newContent.
 JWB.editPage = function(newContent) {
 	$('#editBoxArea').val(newContent);
-	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.name, encodeURIComponent(JWB.page.name)));
+	$('#currentpage').html(JWB.msg('editbox-currentpage', JWB.page.name, JWB.page.path));
 	if ($('#preparse').prop('checked')) {
 		$('#articleList').val($.trim($('#articleList').val()) + '\n' + JWB.list[0]); //move current page to the bottom
 		JWB.next();
 		return;
-	} else if (JWB.bot && $('#autosave').prop('checked')) {
-		JWB.api.diff(function() {
+	}
+
+	var onLoadFunctions = {
+		diff: JWB.api.diff,
+		preview: JWB.api.preview
+	};
+	var autoSaveCallback = JWB.bot && $('#autosave').prop('checked')
+		? function() {
 			//timeout will take #throttle's value * 1000, if it's a number above 0. Currently defaults to 0.
 			setTimeout(JWB.api.submit, Math.max(+$('#throttle').val() || 0, 0) * 1000, JWB.page.name);
-		});
-	} else {
-		JWB.api.diff();
-	}
-}
+		}
+		: null;
+
+	var onLoadFunction = onLoadFunctions[$('#onLoad').val()] || onLoadFunctions.diff;
+	onLoadFunction(autoSaveCallback);
+};
 
 //Adds a line to the logs tab.
 JWB.log = function(action, page, info) {
@@ -1356,7 +1425,8 @@ JWB.stop = function() {
 	  '#watchNow,'+
 	  '.JWBtabc[data-tab="2"] .editbutton,'+
 	  '#watchNow'+
-	  '.JWBtabc[data-tab="4"] button').prop('disabled', true);
+	  '.JWBtabc[data-tab="4"] button,'+
+	  '#skipRETF').prop('disabled', true);
 	$('#startbutton, #articleList,'+
 	  '.JWBtabc[data-tab="1"] button,'+
 	  '#replacesPopup button,'+
@@ -1374,9 +1444,10 @@ JWB.stop = function() {
 //Start AutoWikiBrowsing
 JWB.start = function() {
 	JWB.pageCount();
+	JWB.listReplaces(); // generate list of replacements to make
 	if (JWB.list.length === 0 || (JWB.list.length === 1 && !JWB.list[0])) {
 		alert(JWB.msg('no-pages-listed'));
-	} else if ($('#skipNoChange').prop('checked') && !$('.replaceText').val() && !$('.replaceWith').val() && !$('#enableRETF').prop('checked')) {
+	} else if ($('#skipNoChange').prop('checked') && JWB.replaces.length === 0 && !$('#enableRETF').prop('checked')) {
 		alert(JWB.msg('infinite-skip-notice'));
 	} else {
 		JWB.isStopped = false;
@@ -1387,7 +1458,7 @@ JWB.start = function() {
 		} else {
 			$('#preparse-reset').click();
 		}
-		$('#stopbutton, .editbutton, #watchNow, .JWBtabc[data-tab="2"] button, .JWBtabc[data-tab="4"] button').prop('disabled', false);
+		$('#stopbutton, .editbutton, #watchNow, .JWBtabc[data-tab="2"] button, .JWBtabc[data-tab="4"] button, #skipRETF').prop('disabled', false);
 		$('#startbutton, #articleList, .JWBtabc[data-tab="1"] button, #replacesPopup button, #replacesPopup input, .JWBtabc input, select').prop('disabled', true);
 		if (!JWB.bot || !$('#autosave').prop('checked')) {
 			// keep summary / watchlist options enabled when not in autosave mode
@@ -1399,10 +1470,10 @@ JWB.start = function() {
 
 JWB.updateButtons = function() {
 	if (!JWB.page.exists && $('#deletePage').is('.delete')) {
-		$('#deletePage').removeClass('delete').addClass('undelete').html('Undelete');
+		$('#deletePage').removeClass('delete').addClass('undelete').html(JWB.msg('editbutton-undelete'));
 		JWB.fn.blink('#deletePage'); //Indicate the button has changed
 	} else if (JWB.page.exists && $('#deletePage').is('.undelete')) {
-		$('#deletePage').removeClass('undelete').addClass('delete').html('Delete');
+		$('#deletePage').removeClass('undelete').addClass('delete').html(JWB.msg('editbutton-delete'));
 		JWB.fn.blink('#deletePage'); //Indicate the button has changed
 	}
 	if (!JWB.page.exists) {
@@ -1436,7 +1507,7 @@ JWB.worker.load = function(callback) {
 			}
 		}
 	});
-}
+};
 
 // Create a worker to be able to preform regex operations without hanging the current process.
 // Based on https://stackoverflow.com/q/66153487/1256925
@@ -1458,7 +1529,7 @@ JWB.worker.init = function() {
 				console.error("Worker finished without callback set:", e.data, e);
 			}
 			JWB.worker.next(true);
-		}
+		};
 	});
 };
 
@@ -1482,7 +1553,7 @@ JWB.worker.terminate = function() {
 JWB.worker.cancelAll = function() {
 	JWB.worker.queue = [];
 	if (JWB.worker.worker) JWB.worker.worker.terminate(); // do not call the callback.
-}
+};
 
 // Set worker to work, or queue the worker task.
 JWB.worker.do = function(msg, callback) {
@@ -1577,14 +1648,14 @@ JWB.fn.uniques = function(arr) {
 // the user parameter is still kept as an optional parameter to maintain functionality as given on that template page.
 JWB.fn.allowBots = function(text, user = "JWB") {
 	var usr = user.replace(/([\(\)\*\+\?\.\-\:\!\=\/\^\$])/g, "\\$1");
-	if (!new RegExp("\\{\\{\\s*(nobots|bots[^}]*)\\s*\\}\\}", "i").test(text))
+	if (!new RegExp("\\{\\{\\s*(nobots\\s*\\}\\}|bots\\s*(?:\\}\\}|\\|))", "i").test(text))
 		return true;
 	if (new RegExp("\\{\\{\\s*bots\\s*\\|\\s*deny\\s*=\\s*([^}]*,\\s*)*" + usr + "\\s*(?=[,\\}])[^}]*\\s*\\}\\}", "i").test(text))
-		return false
+		return false;
 	else
 		return new RegExp("\\{\\{\\s*((?!nobots)|bots(\\s*\\|\\s*allow\\s*=\\s*((?!none)|([^}]*,\\s*)*" + usr +
 			"\\s*(?=[,\\}])[^}]*|all))?|bots\\s*\\|\\s*deny\\s*=\\s*(?!all)[^}]*|bots\\s*\\|\\s*optout=(?!all)[^}]*)\\s*\\}\\}", "i").test(text);
-}
+};
 
 
 //Prepends zeroes until the number has the desired length of len (default 2)
@@ -1658,20 +1729,36 @@ JWB.msg = function(message) {
 };
 
 /***** Init *****/
+// Check whether or not we are ready to init JWB. If not allowed, abort and delete JWB object to deny access.
+JWB.checkInit = function() {
+	if (JWB.allowed === false) {
+		var msg = JWB.msg('not-on-list');
+		JWB = false;
+		delete JWB;
+		alert(msg);
+		return;
+	}
+	JWB.allLoaded = true;
+	for (var m in JWB.messages) if (JWB.messages[m] === null) JWB.allLoaded = false;
+	if (JWB.allowed === true && JWB.allLoaded && Object.keys(JWB.messages).length == JWB.langs.length + 1) { // if there are two languages to load, wait for them both.
+		console.log('langs loaded');
+		JWB.init(); //init if verification has already returned true
+	}
+};
 
+// Initialise JWB
 JWB.init = function() {
 	console.log(JWB.messages.en, !!JWB.messages.en);
 	JWB.setup.load();
 	JWB.worker.init();
 	JWB.fn.clearAllTimeouts();
-	if (!JWB.messages[JWB.lang] && JWB.lang != 'qqx') JWB.lang = 'en';
-	
+
 	var findreplace = '<div class="replaces">'+
 		'<label style="display:block;">'+JWB.msg('label-replace')+' <input type="text" class="replaceText"/></label>'+
 		'<label style="display:block;">'+JWB.msg('label-rwith')+' <input type="text" class="replaceWith"/></label>'+
 		'<div class="regexswitch">'+
 			'<label><input type="checkbox" class="useRegex"> '+JWB.msg('label-useregex')+'</label>'+
-			'<a class="re101" href="http://regex101.com/#javascript" target="_blank">?</a>'+
+			'<a class="infoLink" href="http://regex101.com/#javascript" target="_blank" tabindex="-1">101</a>'+
 			'<label class="divisor" title="'+JWB.msg('tip-regex-flags')+'" style="display:none;">'+
 				JWB.msg('label-regex-flags')+' <input type="text" class="regexFlags" value="g"/>'+ //default: global replacement
 			'</label>'+
@@ -1702,14 +1789,14 @@ JWB.init = function() {
 				'</aside>'+
 				'<section id="tabs">'+
 					'<nav class="tabholder">'+
-						'<span class="JWBtab" data-tab="1">'+JWB.msg('tab-setup')+'</span> '+
-						'<span class="JWBtab active" data-tab="2">'+JWB.msg('tab-editing')+'</span> '+
+						'<span class="JWBtab active" data-tab="1">'+JWB.msg('tab-setup')+'</span> '+
+						'<span class="JWBtab" data-tab="2">'+JWB.msg('tab-editing')+'</span> '+
 						'<span class="JWBtab" data-tab="3">'+JWB.msg('tab-skip')+'</span> '+
 						(JWB.sysop?'<span class="JWBtab" data-tab="4">'+JWB.msg('tab-other')+'</span> ':'')+
 						' <span class="JWBtab log" data-tab="5">'+JWB.msg('tab-log')+'</span> '+
 					'</nav>'+
-					'<section class="JWBtabc" data-tab="1"></section>'+
-					'<section class="JWBtabc active" data-tab="2"></section>'+
+					'<section class="JWBtabc active" data-tab="1"></section>'+
+					'<section class="JWBtabc" data-tab="2"></section>'+
 					'<section class="JWBtabc" data-tab="3"></section>'+
 					(JWB.sysop?'<section class="JWBtabc" data-tab="4"></section>':'')+
 					'<section class="JWBtabc log" data-tab="5"></section>'+
@@ -1717,7 +1804,7 @@ JWB.init = function() {
 				'</section>'+
 				'<aside id="editBox">'+
 					'<b>'+JWB.msg('editbox-caption')+' - <span id="currentpage">'+JWB.msg('editbox-currentpage', ' ', ' ')+'</span></b>'+
-					'<textarea id="editBoxArea"></textarea>'+
+					'<textarea id="editBoxArea" accesskey=","></textarea>'+
 				'</aside>'+
 			'</div>'+
 		'</main>'+
@@ -1730,8 +1817,9 @@ JWB.init = function() {
 		'</footer>'+
 		'<div id="overlay" style="display:none;"></div>'+
 		'<section class="JWBpopup" id="replacesPopup" style="display:none;">'+
-			'<button id="moreReplaces">'+JWB.msg('button-more-fields')+'</button>'+
+			'<button class="moreReplaces" data-insert="after">'+JWB.msg('button-more-fields')+'</button>'+
 			'<br>'+findreplace+
+			'<button class="moreReplaces" data-insert="before">'+JWB.msg('button-more-fields')+'</button>'+
 		'</section>'+
 		'<section class="JWBpopup" id="pagelistPopup" style="display:none;">'+
 			'<form action="#" id="pl-form"></form>'+
@@ -1794,9 +1882,9 @@ JWB.init = function() {
 		'</fieldset>'
 	);
 	$('.JWBtabc[data-tab="2"]').html(
-		'<label class="minorEdit"><input type="checkbox" id="minorEdit" checked> '+JWB.msg('minor-edit')+'</label>'+
-		'<label class="editSummary viaJWB">'+JWB.msg('edit-summary')+'<br/> <input class="fullwidth" type="text" id="summary" maxlength="500"></label>'+
-		' <input type="checkbox" id="viaJWB" checked title="'+JWB.msg('tip-via-JWB')+'">'+
+		'<label class="minorEdit"><input type="checkbox" id="minorEdit" accesskey="i" checked> '+JWB.msg('minor-edit')+'</label>'+
+		'<label class="editSummary'+(JWB.hasTag?'':' viaJWB')+'">'+JWB.msg('edit-summary')+'<br/> <input class="fullwidth" type="text" id="summary" maxlength="500" accesskey="b"></label>'+
+		' <input type="checkbox" id="viaJWB"'+(JWB.hasTag?'':' checked')+' title="'+JWB.msg('tip-via-JWB')+'">'+
 		'<select id="watchPage">'+
 			'<option value="watch">'+JWB.msg('watch-watch')+'</option>'+
 			'<option value="unwatch">'+JWB.msg('watch-unwatch')+'</option>'+
@@ -1815,6 +1903,14 @@ JWB.init = function() {
 			'</label>'+
 			'<br>'
 		:'')+
+		'<label style="display:block">'+
+			JWB.msg('on-load')+
+			' <select id="onLoad">'+
+				'<option value="diff" selected>'+JWB.msg('on-load-diff')+'</option>'+
+				'<option value="preview">'+JWB.msg('on-load-preview')+'</option>'+
+			'</select>'+
+		'</label>'+
+		'<hr>'+
 		'<span id="startstop">'+
 			'<button id="startbutton" accesskey="a">'+JWB.msg('editbutton-start')+'</button>'+
 			'<br>'+
@@ -1828,14 +1924,16 @@ JWB.init = function() {
 		'<button id="replacesButton">'+JWB.msg('button-open-popup')+'</button>'+
 		findreplace+
 		'<hr>'+
-		'<label><input type="checkbox" id="enableRETF">'+
+		'<label><input type="checkbox" id="enableRETF"> '+
 			JWB.msg('label-enable-RETF', 
 				'<a href="/wiki/Project:AutoWikiBrowser/Typos" target="_blank">'+
 					JWB.msg('label-RETF')+
 				'</a>')+
 		'</label>'+
 		' <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Gnome-view-refresh.svg/20px-Gnome-view-refresh.svg.png"'+
-		'id="refreshRETF" title="'+JWB.msg('tip-refresh-RETF')+'">'
+		'id="refreshRETF" title="'+JWB.msg('tip-refresh-RETF')+'">'+
+		'<br/>'+
+		'<button id="skipRETF" title="'+JWB.msg('tip-skip-RETF')+'" disabled>'+JWB.msg('skip-RETF')+'</button>'
 	);
 	$('.JWBtabc[data-tab="3"]').html(
 		'<fieldset>'+
@@ -1854,9 +1952,9 @@ JWB.init = function() {
 			'<legend>'+JWB.msg('label-skip-when')+'</legend>'+
 			'<label><input type="checkbox" id="skipNoChange"> '+JWB.msg('skip-no-change')+'</label>'+
 			'<br>'+
-			'<label><input type="radio" id="exists-yes" name="exists" value="yes"> '+JWB.msg('skip-exists-yes')+'</label>'+
-			'<label><input type="radio" id="exists-no" name="exists" value="no" checked> '+JWB.msg('skip-exists-no')+'</label>'+
-			'<label><input type="radio" id="exists-neither" name="exists" value="neither">'+JWB.msg('skip-exists-neither')+'</label>'+
+			'<label><input type="radio" id="exists-yes" name="exists" value="yes"> '+JWB.msg('skip-exists-yes')+'</label> '+
+			'<label><input type="radio" id="exists-no" name="exists" value="no" checked> '+JWB.msg('skip-exists-no')+'</label> '+
+			'<label><input type="radio" id="exists-neither" name="exists" value="neither"> '+JWB.msg('skip-exists-neither')+'</label>'+
 			(JWB.sysop?'<br><label><input type="checkbox" id="skipAfterAction" checked> '+JWB.msg('skip-after-action')+'</label>':'')+
 			'<hr/>'+
 		'<label>'+JWB.msg('skip-contains')+' <input class="fullwidth" type="text" id="skipContains"></label>'+
@@ -1884,6 +1982,10 @@ JWB.init = function() {
 			'<label>'+JWB.msg('move-new-name')+' <input type="text" id="moveTo"></label>'+
 		'</fieldset>'+
 		'<fieldset>'+
+			'<legend>'+JWB.msg('delete-header')+'</legend>'+
+			'<label><input type="checkbox" id="deleteTalk"> '+JWB.msg('delete-talk')+'</label>'+
+		'</fieldset>'+
+		'<fieldset>'+
 		'<legend>'+JWB.msg('protect-header')+'</legend>'+
 			JWB.msg('protect-edit')+
 			' <select id="editProt">'+
@@ -1908,19 +2010,20 @@ JWB.init = function() {
 				'<option value="sysop">'+JWB.msg('protect-sysop')+'</option>'+
 			'</select> '+
 			'<br>'+
-			'<label>'+JWB.msg('protect-expiry')+' <input type="text" id="protectExpiry"/></label>'+
+			'<label>'+JWB.msg('protect-expiry')+'<a class="infoLink" href="https://www.mediawiki.org/w/api.php?action=help&modules=main#main/datatypes" target="_blank" tabindex="-1">?</a> <input type="text" id="protectExpiry"/></label>'+
 		'</fieldset>'+
 		'<button id="movePage" disabled accesskey="m">'+JWB.msg('editbutton-move')+'</button> '+
-		'<button id="deletePage" disabled accesskey="x">'+JWB.msg('editbutton-delete')+'</button> '+
+		'<button id="deletePage" class="delete" disabled accesskey="x">'+JWB.msg('editbutton-delete')+'</button> '+
 		'<button id="protectPage" disabled accesskey="z">'+JWB.msg('editbutton-protect')+'</button> '+
-		'<button id="skipPage" disabled title="['+JWB.tooltip+'n]">'+JWB.msg('editbutton-skip')+'</button>'
+		'<button id="skipPage" disabled title="['+JWB.tooltip+'n]">'+JWB.msg('editbutton-skip')+'</button>'+
+		'<div class="logActionNote">'+JWB.msg('log-action-note')+'</div>'
 	);
 	$('.JWBtabc[data-tab="5"]').html('<table id="actionlog"><tbody></tbody></table>');
 	$('#pagelistPopup form').html(
 		'<div id="ns-filter" title="'+JWB.msg('tip-ns-select')+'">' + JWB.msg('label-ns-select') + NSList + '</div>'+
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" id="categorymembers" name="categorymembers" value="cm"> '+JWB.msg('legend-cm')+'</label></legend>'+
-			'<label title="'+JWB.msg('tip-cm')+'">'+JWB.msg('label-cm')+' <input type="text" name="cmtitle" id="cmtitle"></label>'+
+			'<label title="'+JWB.msg('tip-cm')+'">'+JWB.msg('label-cm')+' <input type="text" name="cmtitle" id="cmtitle" class="fullwidth"></label>'+
 			'<div>'+JWB.msg('cm-include')+' '+
 				'<label><input type="checkbox" id="cmtype-page" name="cmtype" value="page" checked> '+JWB.msg('cm-include-pages')+'</label>'+
 				'<label><input type="checkbox" id="cmtype-subcg" name="cmtype" value="subcat" checked> '+JWB.msg('cm-include-subcgs')+'</label>'+
@@ -1929,7 +2032,7 @@ JWB.init = function() {
 		'</fieldset>'+
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" name="linksto" id="linksto"> '+JWB.msg('legend-linksto')+'</label></legend>'+
-			'<label>'+JWB.msg('label-linksto')+' <input type="text" name="title" id="linksto-title"></label>'+
+			'<label>'+JWB.msg('label-linksto')+' <input type="text" name="title" id="linksto-title" class="fullwidth"></label>'+
 			'<div>'+JWB.msg('links-include')+' '+
 				'<label><input type="checkbox" id="backlinks" name="backlinks" value="bl" checked> '+JWB.msg('links-include-links')+'</label>'+
 				'<label><input type="checkbox" id="embeddedin" name="embeddedin" value="ei"> '+JWB.msg('links-include-templ')+'</label>'+
@@ -1946,7 +2049,7 @@ JWB.init = function() {
 		'</fieldset>'+
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" id="prefixsearch" name="prefixsearch" value="ps"> '+JWB.msg('legend-ps')+'</label></legend>'+
-			'<label>'+JWB.msg('label-ps')+' <input type="text" name="pssearch" id="pssearch"></label>'+
+			'<label>'+JWB.msg('label-ps')+' <input type="text" name="pssearch" id="pssearch" class="fullwidth"></label>'+
 			'<label title="'+JWB.msg('tip-ps-strict')+'"><input type="checkbox" name="allpages" value="ap" id="psstrict" checked> '+JWB.msg('label-ps-strict')+'</label>'+
 		'</fieldset>'+
 		'<fieldset>'+
@@ -1955,12 +2058,13 @@ JWB.init = function() {
 		'</fieldset>'+
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" id="proplinks" name="links" value="pl"> '+JWB.msg('legend-pl')+'</label></legend>'+
-			'<label title="'+JWB.msg('tip-pl')+'">'+JWB.msg('label-pl')+' <input type="text" id="titles" name="titles"></label>'+
+			'<label title="'+JWB.msg('tip-pl')+'">'+JWB.msg('label-pl')+' <input type="text" id="titles" name="titles" class="fullwidth"></label>'+
 		'</fieldset>'+
 		'<fieldset>'+
 			'<legend><label><input type="checkbox" id="proplinks" name="search" value="sr"> '+JWB.msg('legend-sr')+'</label></legend>'+
 			'<label title="'+JWB.msg('tip-sr')+'\n'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
-				JWB.msg('label-sr')+' <input type="text" id="srsearch" name="srsearch" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
+				JWB.msg('label-sr')+
+				' <input type="text" id="srsearch" name="srsearch" class="fullwidth" placeholder="'+JWB.msg('placeholder-sr', 'insource:', 'intitle:')+'">'+
 			'</label>'+
 		'</fieldset>'+
 		'<fieldset class="listSMW">'+
@@ -1970,9 +2074,9 @@ JWB.init = function() {
 		'<button type="submit">'+JWB.msg('pagelist-generate')+'</button>'
 	);
 	if (JWB.hasSMW) {
-		$('#pagelistPopup').addClass('hasSMW')
+		$('#pagelistPopup').addClass('hasSMW');
 	}
-	$('body').addClass('AutoWikiBrowser'); //allow easier custom styling of JWB.
+	$('body').addClass('AutoWikiBrowser').addClass('notheme'); //allow easier custom styling of JWB.
 	$('[accesskey]').each(function() {
 		let lbl = this.accessKeyLabel || this.accessKey; // few browsers support accessKeyLabel, so fallback to accessKey.
 		$(this).attr('title', '['+lbl+']');
@@ -2002,9 +2106,9 @@ JWB.init = function() {
 		if (e.blockedURI == 'blob') {
 			JWB.worker.supported = false; // tell the next JWB.worker.init() that it shouldn't even try.
 		} else if (JWB && JWB.msg) {
-			alert(JWB.msg('csp-error', e.violatedDirective))
+			alert(JWB.msg('csp-error', e.violatedDirective));
 		}
-	})
+	});
 	
 	$('.JWBtab').click(function() {
 		$('.active').removeClass('active');
@@ -2034,7 +2138,13 @@ JWB.init = function() {
 	$('#updateSetups').click(JWB.setup.load);
 	$('#deleteSetup').click(JWB.setup.del);
 	
-	if (window.RETF) $('#refreshRETF').click(RETF.load);
+	if (window.RETF) {
+		$('#refreshRETF').click(RETF.load);
+		$('#skipRETF').click(JWB.skipRETF);
+		$('#enableRETF').change(function() {
+			$('#skipRETF').css('visibility', this.checked ? 'visible' : 'hidden');
+		});
+	}
 
 	$('#replacesButton, #pagelistButton').click(function() {
 		var popup = this.id.slice(0, -6); //omits the 'Button' in the id by cutting off the last 6 characters
@@ -2042,14 +2152,16 @@ JWB.init = function() {
 	});
 	$('#overlay').click(function() {
 		$('#replacesPopup, #pagelistPopup, #overlay').hide();
+		JWB.listReplaces();
 		JWB.pl.done = true;
 		JWB.pl.stop();
 	});
-	$('#moreReplaces').click(function() {
-		$('#replacesPopup').append(findreplace);
+	$('.moreReplaces').click(function() {
+		var location = $(this).data('insert'); // either call $(this).before() or $(this).after()
+		$(this)[location](findreplace);
 	});
 	$('#replacesPopup').on('keydown', '.replaces:last', function(e) {
-		if (e.which === 9) $('#moreReplaces')[0].click();
+		if (e.which === 9) $('.moreReplaces[data-insert="before"]')[0].click();
 	});
 	
 	$('#pl-form').submit(function(e) {
